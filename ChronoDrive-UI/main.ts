@@ -1,4 +1,5 @@
 import { app, BrowserWindow, screen } from 'electron';
+const {ipcMain} = require('electron');
 import * as path from 'path';
 import * as url from 'url';
 
@@ -15,8 +16,8 @@ function createWindow() {
   win = new BrowserWindow({
     x: 0,
     y: 0,
-    width: size.width,
-    height: size.height,
+    width: size.width / 3,
+    height: size.height / 2,
     webPreferences: {
       nodeIntegration: true,
     },
@@ -73,7 +74,12 @@ try {
     }
   });
 
+  ipcMain.on('login', (evt, msg) => {
+    console.log('holy cow we got a login event', msg);
+  });
+
 } catch (e) {
   // Catch Error
   // throw e;
+  console.log(e);
 }

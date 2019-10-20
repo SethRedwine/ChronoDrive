@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var electron_1 = require("electron");
+var ipcMain = require('electron').ipcMain;
 var path = require("path");
 var url = require("url");
 var win, serve;
@@ -63,9 +64,13 @@ try {
             createWindow();
         }
     });
+    ipcMain.on('login', function (evt, msg) {
+        console.log('holy cow we got a login event');
+    });
 }
 catch (e) {
     // Catch Error
     // throw e;
+    console.log(e);
 }
 //# sourceMappingURL=main.js.map

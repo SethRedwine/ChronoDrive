@@ -17,6 +17,10 @@ import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { HomeModule } from './home/home.module';
 
 import { AppComponent } from './app.component';
+import {
+  MdcDrawerModule,
+  MdcIconModule
+} from '@angular-mdc/web';
 
 // AoT requires an exported function for factories
 export function HttpLoaderFactory(http: HttpClient) {
@@ -33,6 +37,8 @@ export function HttpLoaderFactory(http: HttpClient) {
     SharedModule,
     HomeModule,
     AppRoutingModule,
+    MdcDrawerModule,
+    MdcIconModule,
     TranslateModule.forRoot({
       loader: {
         provide: TranslateLoader,
