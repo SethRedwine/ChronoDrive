@@ -1,19 +1,30 @@
-<mdc-drawer>
-  <mdc-drawer-header title="Menu"></mdc-drawer-header>
+<mdc-drawer drawer="dismissible" [open]="showMenu">
+  <mdc-drawer-header title="ChronoDrive"></mdc-drawer-header>
   <mdc-drawer-content>
     <mdc-list>
-      <mdc-list-item>
-        <button mdc-button (click)="loginMenuClick()">
-          <span *ngIf="!loggedIn">Login</span>
-          <span *ngIf="loggedIn">Log out</span>
-        </button>
-      </mdc-list-item>
+      <ng-container *ngIf="!loggedIn">
+        <div class="row"><input matInput type="text" placeholder="Username" [(ngModel)]="user"></div>
+        <div class="row"><input matInput type="password" placeholder="Password" [(ngModel)]="pass" disabled></div>
+        <mdc-list-item>
+            <button style="width: 100%" mdc-button (click)="login(user, pass)">
+              Login
+            </button>
+        </mdc-list-item>
+      </ng-container>
+      <ng-container *ngIf="loggedIn">
+        <div class="logout">
+          <mdc-list-divider></mdc-list-divider>
+          <mdc-list-item>
+              <button style="width: 100%" mdc-button (click)="logOut()"> Log out </button>
+          </mdc-list-item>
+        </div>
+      </ng-container>
     </mdc-list>
   </mdc-drawer-content>
 </mdc-drawer>
-<div class="container" mdcDrawerAppContent>
+<div mdcDrawerAppContent>
   <ng-container *ngIf="!loggedIn">
-
+    <div class="row"> Please log in to see your files.</div>
   </ng-container>
   <ng-container *ngIf="loggedIn">
 

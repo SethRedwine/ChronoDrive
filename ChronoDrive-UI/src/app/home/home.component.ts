@@ -8,19 +8,27 @@ const { ipcRenderer } = require('electron');
 })
 export class HomeComponent implements OnInit {
   loggedIn = false;
-  user: string;
+  showMenu = true;
+  username: string;
 
   constructor() { }
 
   ngOnInit() {
+    ipcRenderer.on('directory-update', (evt, msg) => {
+      console.log(msg);
+    })
   }
 
-  loginMenuClick() {
+  login(user: string, pass: string): void {
+    ipcRenderer.send('login', {user});
+    this.username = user;
+    this.loggedIn = true;
+  }
+
+  logOut() {
     if (this.loggedIn) {
       this.loggedIn = false;
-      this.user = null;
+      this.username = null;
     }
-    ipcRenderer.send('login', 'username');
   }
-
 }
