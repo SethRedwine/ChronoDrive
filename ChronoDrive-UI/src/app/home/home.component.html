@@ -6,27 +6,34 @@
         <div class="row"><input matInput type="text" placeholder="Username" [(ngModel)]="user"></div>
         <div class="row"><input matInput type="password" placeholder="Password" [(ngModel)]="pass" disabled></div>
         <mdc-list-item>
-            <button style="width: 100%" mdc-button (click)="login(user, pass)">
-              Login
-            </button>
+          <button style="width: 100%" mdc-button (click)="login(user, pass)">
+            Login
+          </button>
         </mdc-list-item>
       </ng-container>
       <ng-container *ngIf="loggedIn">
         <div class="logout">
           <mdc-list-divider></mdc-list-divider>
           <mdc-list-item>
-              <button style="width: 100%" mdc-button (click)="logOut()"> Log out </button>
+            <button style="width: 100%" mdc-button (click)="logOut()"> Log out </button>
           </mdc-list-item>
         </div>
       </ng-container>
     </mdc-list>
   </mdc-drawer-content>
 </mdc-drawer>
-<div mdcDrawerAppContent>
+<div mdcDrawerAppContent style="height: 100%;">
   <ng-container *ngIf="!loggedIn">
     <div class="row"> Please log in to see your files.</div>
   </ng-container>
   <ng-container *ngIf="loggedIn">
-
+    <div style="height: 100%; box-sizing: border-box;">
+      <mat-card style="height: 100%; box-sizing: border-box; padding:0">
+        <file-manager [fileElements]="fileElements | async" [path]="currentPath" [canNavigateUp]="canNavigateUp"
+          (folderAdded)="addFolder($event)" (elementRemoved)="removeElement($event)"
+          (navigatedDown)="navigateToFolder($event)" (navigatedUp)="navigateUp()"
+          (elementRenamed)="renameElement($event)" (elementMoved)="moveElement($event)"></file-manager>
+      </mat-card>
+    </div>
   </ng-container>
 </div>

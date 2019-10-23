@@ -93,11 +93,12 @@ catch (e) {
     // throw e;
     console.log(e);
 }
-function getDirInfo(dirPath) {
+function getDirInfo(dirPath, dirEntry) {
+    if (dirEntry === void 0) { dirEntry = null; }
     var entries = fs.readdirSync(dirPath, { encoding: 'utf8', withFileTypes: true });
     console.log(dirPath, entries);
     var dir = {
-        entry: null,
+        entry: dirEntry,
         stats: fs.statSync(dirPath),
         entries: []
     };
@@ -106,7 +107,7 @@ function getDirInfo(dirPath) {
         var ent = null;
         var entPath = dirPath + "/" + entry.name;
         if (entry.isDirectory()) {
-            ent = getDirInfo(entPath);
+            ent = getDirInfo(entPath, entry);
         }
         else {
             ent = {

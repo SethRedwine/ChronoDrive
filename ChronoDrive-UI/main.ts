@@ -108,11 +108,11 @@ try {
   console.log(e);
 }
 
-function getDirInfo(dirPath): DirectoryInfo {
+function getDirInfo(dirPath, dirEntry = null): DirectoryInfo {
   const entries = fs.readdirSync(dirPath, { encoding: 'utf8', withFileTypes: true });
   console.log(dirPath, entries);
   const dir = {
-    entry: null,
+    entry: dirEntry,
     stats: fs.statSync(dirPath),
     entries: []
   }
@@ -120,7 +120,7 @@ function getDirInfo(dirPath): DirectoryInfo {
     let ent = null
     const entPath = `${dirPath}/${entry.name}`
     if (entry.isDirectory()) {
-      ent = getDirInfo(entPath)
+      ent = getDirInfo(entPath, entry);
     } else {
       ent = {
         entry: entry,
