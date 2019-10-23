@@ -11,6 +11,9 @@ src/**/*.js
 !src/karma.conf.js
 *.js.map
 
+# user data
+/AppData
+
 # dependencies
 /node_modules
 
