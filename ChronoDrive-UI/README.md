@@ -5,7 +5,11 @@
 
 This is a simple client for file storage and synchronization that utilizes the NDN architecture.
 
-## Getting Started
+## Development: Getting Started
+
+Ensure you are set up with [node](https://nodejs.org/en/) on your local machine. Just follow the link and use their handy installer.
+
+Once node is set up download the files in this repository. Then open up your command prompt and navigate to the same directory as the package.json.
 
 Install dependencies with npm :
 
