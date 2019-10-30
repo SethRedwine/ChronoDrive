@@ -34,6 +34,10 @@ export class FileService implements IFileService {
     this.map.set(element.id, element);
   }
 
+  clearFiles() {
+    this.map = new Map<string, FileElement>();
+  }
+
   private querySubject: BehaviorSubject<FileElement[]>;
   queryInFolder(folderId: string) {
     const result: FileElement[] = [];

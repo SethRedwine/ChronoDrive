@@ -3,18 +3,12 @@ const { ipcMain } = require('electron');
 const fs = require('fs');
 import * as path from 'path';
 import * as url from 'url';
-import { Stats, Dirent } from 'fs';
+import { FileInfo } from './src/app/types/DirectoryInfo';
 
 let win, serve;
 const args = process.argv.slice(1);
 serve = args.some(val => val === '--serve');
 const USER_DATA_DIR = './AppData';
-
-class DirectoryInfo {
-  entry: Dirent;
-  stats: Stats;
-  entries: DirectoryInfo[];
-}
 
 function createWindow() {
 
@@ -97,7 +91,7 @@ try {
     if (!fs.existsSync(userDirPath)) {
       fs.mkdirSync(userDirPath);
     }
-    const files: DirectoryInfo = getDirInfo(userDirPath);
+    const files: FileInfo = getDirInfo(userDirPath);
     evt.reply('directory-update', files);
     console.log(files);
   });
@@ -108,11 +102,13 @@ try {
   console.log(e);
 }
 
-function getDirInfo(dirPath, dirEntry = null): DirectoryInfo {
+function getDirInfo(dirPath, dirEntry = null): FileInfo {
   const entries = fs.readdirSync(dirPath, { encoding: 'utf8', withFileTypes: true });
   console.log(dirPath, entries);
   const dir = {
     entry: dirEntry,
+    isDirectory: fs.statSync(dirPath).isDirectory(),
+    path: dirPath,
     stats: fs.statSync(dirPath),
     entries: []
   }
@@ -124,6 +120,8 @@ function getDirInfo(dirPath, dirEntry = null): DirectoryInfo {
     } else {
       ent = {
         entry: entry,
+        isDirectory: false,
+        path: entPath,
         stats: fs.statSync(entPath),
         entries: null
       }

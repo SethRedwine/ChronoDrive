@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FileElement } from '../types/FileElement';
 import { FileService } from '../core/services/file/file.service';
 import { Observable } from 'rxjs';
+import { FileInfo } from '../types/DirectoryInfo';
 const { ipcRenderer } = require('electron');
 
 @Component({
@@ -24,29 +25,53 @@ export class HomeComponent implements OnInit {
   ngOnInit() {
     ipcRenderer.on('directory-update', (evt, msg) => {
       console.log(msg);
+      this.fileService.clearFiles();
+      this.createInitialDirectoryStructure(msg);
     });
-    const folderA = this.fileService.add({ name: 'Folder A', isFolder: true, parent: 'root' });
-    this.fileService.add({ name: 'Folder B', isFolder: true, parent: 'root' });
-    this.fileService.add({ name: 'Folder C', isFolder: true, parent: folderA.id });
-    this.fileService.add({ name: 'File A', isFolder: false, parent: 'root' });
-    this.fileService.add({ name: 'File B', isFolder: false, parent: 'root' });
+    // const folderA = this.fileService.add({ name: 'Folder A', isFolder: true, parent: 'root' });
+    // this.fileService.add({ name: 'Folder B', isFolder: true, parent: 'root' });
+    // this.fileService.add({ name: 'Folder C', isFolder: true, parent: folderA.id });
+    // this.fileService.add({ name: 'File A', isFolder: false, parent: 'root' });
+    // this.fileService.add({ name: 'File B', isFolder: false, parent: 'root' });
 
     this.updateFileElementQuery();
   }
 
   login(user: string, pass: string): void {
-    ipcRenderer.send('login', {user});
+    // TODO: Handle passwords
+    ipcRenderer.send('login', { user });
     this.username = user;
     this.loggedIn = true;
   }
 
   logOut() {
-    if (this.loggedIn) {
-      this.loggedIn = false;
-      this.username = null;
-    }
+    this.fileService.clearFiles();
+    this.loggedIn = false;
+    this.username = null;
   }
 
+  createInitialDirectoryStructure(msg: FileInfo) {
+    // const rootDirectory = this.fileService.add({
+    //   name: msg.entry.name,
+    //   path: msg.path,
+    //   isFolder: msg.isDirectory,
+    //   parent: 'root'
+    // });
+    msg.entries.forEach(entry => this.addDirectoryOrFile(entry, 'root'));
+    this.updateFileElementQuery();
+  }
+
+  addDirectoryOrFile(entry: FileInfo, parent: string) {
+    const file = this.fileService.add({
+      name: entry.entry.name,
+      path: entry.path,
+      isFolder: entry.isDirectory,
+      parent: parent
+    });
+    if (entry.entries) {
+      entry.entries.forEach(entry => this.addDirectoryOrFile(entry, file.id));
+    }
+  }
 
   addFolder(folder: { name: string }) {
     this.fileService.add({ isFolder: true, name: folder.name, parent: this.currentRoot ? this.currentRoot.id : 'root' });

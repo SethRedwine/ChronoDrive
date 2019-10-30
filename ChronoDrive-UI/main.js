@@ -99,6 +99,8 @@ function getDirInfo(dirPath, dirEntry) {
     console.log(dirPath, entries);
     var dir = {
         entry: dirEntry,
+        isDirectory: fs.statSync(dirPath).isDirectory(),
+        path: dirPath,
         stats: fs.statSync(dirPath),
         entries: []
     };
@@ -112,6 +114,8 @@ function getDirInfo(dirPath, dirEntry) {
         else {
             ent = {
                 entry: entry,
+                isDirectory: false,
+                path: entPath,
                 stats: fs.statSync(entPath),
                 entries: null
             };
