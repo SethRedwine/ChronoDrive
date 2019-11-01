@@ -1,6 +1,7 @@
 import { app, BrowserWindow, screen } from 'electron';
 const { ipcMain } = require('electron');
 const fs = require('fs');
+var watch = require('node-watch');
 import * as path from 'path';
 import * as url from 'url';
 import { FileInfo } from './src/app/types/DirectoryInfo';
@@ -8,7 +9,8 @@ import { FileInfo } from './src/app/types/DirectoryInfo';
 let win, serve;
 const args = process.argv.slice(1);
 serve = args.some(val => val === '--serve');
-const USER_DATA_DIR = './AppData';
+const APP_DATA_DIR = './AppData';
+let USER_DATA_DIR = APP_DATA_DIR;
 
 function createWindow() {
 
@@ -19,7 +21,7 @@ function createWindow() {
   win = new BrowserWindow({
     x: 0,
     y: 0,
-    width: size.width / 3,
+    width: size.width / 2,
     height: size.height / 2,
     webPreferences: {
       nodeIntegration: true,
@@ -56,8 +58,8 @@ function createWindow() {
 try {
 
   // Ensure that a directory for the users' data has been initialized
-  if (!fs.existsSync(USER_DATA_DIR)) {
-    fs.mkdirSync(USER_DATA_DIR);
+  if (!fs.existsSync(APP_DATA_DIR)) {
+    fs.mkdirSync(APP_DATA_DIR);
   }
 
   // This method will be called when Electron has finished
@@ -83,18 +85,29 @@ try {
   });
 
   ipcMain.on('login', (evt, msg) => {
-    console.log('holy cow we got a login event', msg);
-    // TODO: Handle login event, grab user's directory information and return it to the front end
-
     // Ensure that the directory for this specific user has been initialized
-    const userDirPath = `${USER_DATA_DIR}/${msg.user}`;
-    if (!fs.existsSync(userDirPath)) {
-      fs.mkdirSync(userDirPath);
+    USER_DATA_DIR = `${APP_DATA_DIR}/${msg.user}`;
+    if (!fs.existsSync(USER_DATA_DIR)) {
+      fs.mkdirSync(USER_DATA_DIR);
     }
-    const files: FileInfo = getDirInfo(userDirPath);
+    const files: FileInfo = getDirInfo(USER_DATA_DIR);
     evt.reply('directory-update', files);
-    console.log(files);
+    // Watch the data directory and push changes to the UI
+    let fsWait = false;
+    watch(`${USER_DATA_DIR}`, { recursive: true }, (event, filename) => {
+      if (filename) {
+        if (fsWait) return;
+        setTimeout(() => {
+          fsWait = false;
+        }, 100);
+
+        const files: FileInfo = getDirInfo(USER_DATA_DIR);
+        win.webContents.send('directory-update', files);
+      }
+    });
   });
+
+
 
 } catch (e) {
   // Catch Error
@@ -104,7 +117,6 @@ try {
 
 function getDirInfo(dirPath, dirEntry = null): FileInfo {
   const entries = fs.readdirSync(dirPath, { encoding: 'utf8', withFileTypes: true });
-  console.log(dirPath, entries);
   const dir = {
     entry: dirEntry,
     isDirectory: fs.statSync(dirPath).isDirectory(),

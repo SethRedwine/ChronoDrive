@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, NgZone } from '@angular/core';
 import { FileElement } from '../types/FileElement';
 import { FileService } from '../core/services/file/file.service';
 import { Observable } from 'rxjs';
@@ -20,21 +20,15 @@ export class HomeComponent implements OnInit {
   currentPath: string;
   canNavigateUp = false;
 
-  constructor(public fileService: FileService) { }
+  constructor(public fileService: FileService, private zone: NgZone) { }
 
   ngOnInit() {
     ipcRenderer.on('directory-update', (evt, msg) => {
-      console.log(msg);
       this.fileService.clearFiles();
-      this.createInitialDirectoryStructure(msg);
+      this.zone.run(() => {
+        this.createInitialDirectoryStructure(msg);
+      });
     });
-    // const folderA = this.fileService.add({ name: 'Folder A', isFolder: true, parent: 'root' });
-    // this.fileService.add({ name: 'Folder B', isFolder: true, parent: 'root' });
-    // this.fileService.add({ name: 'Folder C', isFolder: true, parent: folderA.id });
-    // this.fileService.add({ name: 'File A', isFolder: false, parent: 'root' });
-    // this.fileService.add({ name: 'File B', isFolder: false, parent: 'root' });
-
-    this.updateFileElementQuery();
   }
 
   login(user: string, pass: string): void {
@@ -51,12 +45,6 @@ export class HomeComponent implements OnInit {
   }
 
   createInitialDirectoryStructure(msg: FileInfo) {
-    // const rootDirectory = this.fileService.add({
-    //   name: msg.entry.name,
-    //   path: msg.path,
-    //   isFolder: msg.isDirectory,
-    //   parent: 'root'
-    // });
     msg.entries.forEach(entry => this.addDirectoryOrFile(entry, 'root'));
     this.updateFileElementQuery();
   }

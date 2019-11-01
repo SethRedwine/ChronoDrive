@@ -3,17 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var electron_1 = require("electron");
 var ipcMain = require('electron').ipcMain;
 var fs = require('fs');
+var watch = require('node-watch');
 var path = require("path");
 var url = require("url");
 var win, serve;
 var args = process.argv.slice(1);
 serve = args.some(function (val) { return val === '--serve'; });
-var USER_DATA_DIR = './AppData';
-var DirectoryInfo = /** @class */ (function () {
-    function DirectoryInfo() {
-    }
-    return DirectoryInfo;
-}());
+var APP_DATA_DIR = './AppData';
+var USER_DATA_DIR = APP_DATA_DIR;
 function createWindow() {
     var electronScreen = electron_1.screen;
     var size = electronScreen.getPrimaryDisplay().workAreaSize;
@@ -21,7 +18,7 @@ function createWindow() {
     win = new electron_1.BrowserWindow({
         x: 0,
         y: 0,
-        width: size.width / 3,
+        width: size.width / 2,
         height: size.height / 2,
         webPreferences: {
             nodeIntegration: true,
@@ -53,8 +50,8 @@ function createWindow() {
 }
 try {
     // Ensure that a directory for the users' data has been initialized
-    if (!fs.existsSync(USER_DATA_DIR)) {
-        fs.mkdirSync(USER_DATA_DIR);
+    if (!fs.existsSync(APP_DATA_DIR)) {
+        fs.mkdirSync(APP_DATA_DIR);
     }
     // This method will be called when Electron has finished
     // initialization and is ready to create browser windows.
@@ -79,13 +76,28 @@ try {
         console.log('holy cow we got a login event', msg);
         // TODO: Handle login event, grab user's directory information and return it to the front end
         // Ensure that the directory for this specific user has been initialized
-        var userDirPath = USER_DATA_DIR + "/" + msg.user;
-        if (!fs.existsSync(userDirPath)) {
-            fs.mkdirSync(userDirPath);
+        USER_DATA_DIR = APP_DATA_DIR + "/" + msg.user;
+        if (!fs.existsSync(USER_DATA_DIR)) {
+            fs.mkdirSync(USER_DATA_DIR);
         }
-        var files = getDirInfo(userDirPath);
+        var files = getDirInfo(USER_DATA_DIR);
         evt.reply('directory-update', files);
         console.log(files);
+        // Watch the data directory and push changes to the UI
+        var fsWait = false;
+        console.log("Watching " + USER_DATA_DIR);
+        watch("" + USER_DATA_DIR, { recursive: true }, function (event, filename) {
+            if (filename) {
+                if (fsWait)
+                    return;
+                setTimeout(function () {
+                    fsWait = false;
+                }, 100);
+                console.log(filename + " file Changed");
+                var files_1 = getDirInfo(USER_DATA_DIR);
+                win.webContents.send('directory-update', files_1);
+            }
+        });
     });
 }
 catch (e) {
