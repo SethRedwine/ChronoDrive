@@ -73,8 +73,6 @@ try {
         }
     });
     ipcMain.on('login', function (evt, msg) {
-        console.log('holy cow we got a login event', msg);
-        // TODO: Handle login event, grab user's directory information and return it to the front end
         // Ensure that the directory for this specific user has been initialized
         USER_DATA_DIR = APP_DATA_DIR + "/" + msg.user;
         if (!fs.existsSync(USER_DATA_DIR)) {
@@ -82,10 +80,8 @@ try {
         }
         var files = getDirInfo(USER_DATA_DIR);
         evt.reply('directory-update', files);
-        console.log(files);
         // Watch the data directory and push changes to the UI
         var fsWait = false;
-        console.log("Watching " + USER_DATA_DIR);
         watch("" + USER_DATA_DIR, { recursive: true }, function (event, filename) {
             if (filename) {
                 if (fsWait)
@@ -93,7 +89,6 @@ try {
                 setTimeout(function () {
                     fsWait = false;
                 }, 100);
-                console.log(filename + " file Changed");
                 var files_1 = getDirInfo(USER_DATA_DIR);
                 win.webContents.send('directory-update', files_1);
             }
@@ -108,7 +103,6 @@ catch (e) {
 function getDirInfo(dirPath, dirEntry) {
     if (dirEntry === void 0) { dirEntry = null; }
     var entries = fs.readdirSync(dirPath, { encoding: 'utf8', withFileTypes: true });
-    console.log(dirPath, entries);
     var dir = {
         entry: dirEntry,
         isDirectory: fs.statSync(dirPath).isDirectory(),
