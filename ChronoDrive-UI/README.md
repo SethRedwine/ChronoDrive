@@ -48,7 +48,8 @@ You can disable "Developer Tools" by commenting `win.webContents.openDevTools();
 |`npm run electron:linux`| Builds your application and creates an app consumable on linux system |
 |`npm run electron:windows`| On a Windows OS, builds your application and creates an app consumable in windows 32/64 bit systems |
 |`npm run electron:mac`|  On a MAC OS, builds your application and generates a `.app` file of your application that can be run on Mac |
-|`npm run electron:arm`|  On an arm based pc, builds your application and generates a `.AppImage` file of your application that can be run on things like a Raspberry Pi|
+|`npm run electron:arm7`|  On an arm based pc, builds your application and generates a `.AppImage` file of your application that can be run on things like a Raspberry Pi (running arm7l)|
+|`npm run electron:arm6`|  On an arm based pc, builds your application and generates a `.AppImage` file of your application that can be run on things like a Raspberry Pi (running arm64)|
 
 **Your application is optimised. Only /dist folder and node dependencies are included in the executable.**
 

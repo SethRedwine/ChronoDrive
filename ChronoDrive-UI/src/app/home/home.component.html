@@ -1,5 +1,5 @@
 <mdc-drawer drawer="dismissible" [open]="showMenu">
-  <mdc-drawer-header title="ChronoDrive"></mdc-drawer-header>
+  <mdc-drawer-header title="ChronoDrive" [subtitle]="username"></mdc-drawer-header>
   <mdc-drawer-content>
     <mdc-list>
       <ng-container *ngIf="!loggedIn">
@@ -24,7 +24,7 @@
 </mdc-drawer>
 <div mdcDrawerAppContent style="height: 100%;">
   <ng-container *ngIf="!loggedIn">
-    <div class="row"> Please log in to see your files.</div>
+    <div class="row" style="padding-top: 2em;"> Please log in to see your files.</div>
   </ng-container>
   <ng-container *ngIf="loggedIn">
     <div style="height: 100%; box-sizing: border-box;">
