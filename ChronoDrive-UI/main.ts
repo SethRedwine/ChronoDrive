@@ -5,12 +5,28 @@ var watch = require('node-watch');
 import * as path from 'path';
 import * as url from 'url';
 import { FileInfo } from './src/app/types/DirectoryInfo';
+import { Face, MemoryIdentityStorage, MemoryPrivateKeyStorage, KeyChain, IdentityManager, SelfVerifyPolicyManager, Name, KeyType, DEFAULT_RSA_PRIVATE_KEY_DER, DEFAULT_RSA_PUBLIC_KEY_DER } from 'ndn-js';
 
 let win, serve;
 const args = process.argv.slice(1);
 serve = args.some(val => val === '--serve');
 const APP_DATA_DIR = './AppData';
 let USER_DATA_DIR = APP_DATA_DIR;
+
+// ChronoSync Stuff
+// Just use static host for now, allow user to specify in future
+const host = '/raspberry/pi/test/network/';
+const face = new Face({ host: host });
+// Next few lines ripped from Chronochat-js - https://github.com/named-data/ChronoChat-js/blob/master/index.html
+const identityStorage = new MemoryIdentityStorage();
+const privateKeyStorage = new MemoryPrivateKeyStorage();
+const keyChain = new KeyChain(new IdentityManager(identityStorage, privateKeyStorage), new SelfVerifyPolicyManager(identityStorage));
+const keyName = new Name("/testname/DSK-123");
+const certificateName = keyName.getSubName(0, keyName.size() - 1).append("KEY").append(keyName.get(-1)).append("ID-CERT").append("0");
+identityStorage.addKey(keyName, KeyType.RSA, new Blob(DEFAULT_RSA_PUBLIC_KEY_DER));
+privateKeyStorage.setKeyPairForKeyName(keyName, KeyType.RSA, DEFAULT_RSA_PUBLIC_KEY_DER, DEFAULT_RSA_PRIVATE_KEY_DER);
+face.setCommandSigningInfo(keyChain, certificateName);
+
 
 function createWindow() {
 
