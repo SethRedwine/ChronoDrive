@@ -6,6 +6,7 @@ class FileInfo {
     path: string;
     stats: Stats;
     entries: FileInfo[];
+    fileContents: File;
 }
 
 export { FileInfo }

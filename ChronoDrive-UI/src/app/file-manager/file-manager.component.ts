@@ -4,6 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { NewFolderDialogComponent } from '../shared/modals/newFolderDialog/newFolderDialog.component';
 import { RenameDialogComponent } from '../shared/modals/renameDialog/renameDialog.component';
 import { FileElement } from '../types/FileElement';
+const { shell } = require('electron')
 
 @Component({
   selector: 'file-manager',
@@ -11,7 +12,7 @@ import { FileElement } from '../types/FileElement';
   styleUrls: ['./file-manager.component.scss']
 })
 export class FileManagerComponent implements OnChanges {
-  constructor(public dialog: MatDialog) {}
+  constructor(public dialog: MatDialog) { }
 
   @Input() fileElements: FileElement[];
   @Input() canNavigateUp: string;
@@ -24,14 +25,38 @@ export class FileManagerComponent implements OnChanges {
   @Output() elementMoved = new EventEmitter<{ element: FileElement; moveTo: FileElement }>();
   @Output() navigatedUp = new EventEmitter();
 
-  ngOnChanges(changes: SimpleChanges): void {}
+  isSingleClick = false;
+  fileElementsCopy: FileElement[];
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes.fileElements && this.fileElements.length) {
+      this.fileElementsCopy = JSON.parse(JSON.stringify(this.fileElements));
+    }
+  }
 
   deleteElement(element: FileElement) {
     this.elementRemoved.emit(element);
   }
 
   navigate(element: FileElement) {
-    if (element.isFolder) {
+    this.isSingleClick = true;
+    setTimeout(() => {
+      if (this.isSingleClick && element.isFolder) {
+        this.navigatedDown.emit(element);
+      }
+    }, 250);
+  }
+
+  openFile(element: FileElement) {
+    this.isSingleClick = false;
+    if (!element.isFolder) {
+      console.log('Opening: ' + element.path);
+      shell.openItem(element.path);
+      // For some reason, the fileElements list is getting clear on openItem so we have to repopulate
+      setTimeout(() => {
+        this.fileElements = JSON.parse(JSON.stringify(this.fileElementsCopy));
+      }, 350);
+    } else {
       this.navigatedDown.emit(element);
     }
   }

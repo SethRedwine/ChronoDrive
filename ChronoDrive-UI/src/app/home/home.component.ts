@@ -42,6 +42,7 @@ export class HomeComponent implements OnInit {
     this.fileService.clearFiles();
     this.loggedIn = false;
     this.username = null;
+    this.currentPath = null;
   }
 
   createInitialDirectoryStructure(msg: FileInfo) {

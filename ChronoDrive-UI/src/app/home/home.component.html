@@ -15,14 +15,14 @@
         <div class="logout">
           <mdc-list-divider></mdc-list-divider>
           <mdc-list-item>
-            <button style="width: 100%" mdc-button (click)="logOut()"> Log out </button>
+            <button style="width: 100%" mdc-button (click)="logOut(); user = null; pass = null;"> Log out </button>
           </mdc-list-item>
         </div>
       </ng-container>
     </mdc-list>
   </mdc-drawer-content>
 </mdc-drawer>
-<div mdcDrawerAppContent style="height: 100%;">
+<div mdcDrawerAppContent style="height: 100%; background-color: white;">
   <ng-container *ngIf="!loggedIn">
     <div class="row" style="padding-top: 2em;"> Please log in to see your files.</div>
   </ng-container>
