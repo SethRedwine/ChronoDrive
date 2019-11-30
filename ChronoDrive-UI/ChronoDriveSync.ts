@@ -159,10 +159,6 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
  */
 ChronoDriveSync.prototype.onInterest = function
   (prefix, interest, face, interestFilterId, filter) {
-  let content = null;
-
-  // chat_prefix should really be saved as a name, not a URI string.
-  var chatPrefixSize = new Name(this.chat_prefix).size();
   // NOTE: ChronoChat code for reference
   // var seq = parseInt(interest.getName().get(chatPrefixSize + 1).toEscapedString());
   // for (var i = this.msgcache.length - 1 ; i >= 0; i--) {
@@ -174,12 +170,14 @@ ChronoDriveSync.prototype.onInterest = function
   //     break;
   //   }
   // }
-  
-  // TODO: Figure out how to use checksum of incoming update
 
+  // TODO: Figure out how to add checksum to incoming interest
   // TODO: Actually, here we should iterate through the fileInfo/grab the right file, then check the checksum and the timestamp and update if it's older
   // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests are created?
   // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
+  let content = null;
+  // chat_prefix should really be saved as a name, not a URI string.
+  var chatPrefixSize = new Name(this.chat_prefix).size();
   const interestTimestamp = parseInt(interest.getName().get(chatPrefixSize + 1).toEscapedString());
   const lastLocalUpdate = getLastUpdateMs(this.fileInfo);
   if (lastLocalUpdate > interestTimestamp) {
@@ -244,17 +242,17 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
   var sessionNoList = [];  // of number
   var sequenceNoList = []; // of number
 
+  // NOTE: looks like chronochat was matching on sync states from other users
+  // I *think* we'll want to match on state from the same user here, since 
+  // others won't be updating their files
+  // QUESTION: If note is right, do we need to ensure the state wasn't created by
+  // the current device or will that be fine?
+  // if (tempName != this.userName) {
   for (var j = 0; j < syncStates.length; j++) {
     var syncState = syncStates[j];
     var nameComponents = new Name(syncState.getDataPrefix());
     var tempName = nameComponents.get(-1).toEscapedString();
     var sessionNo = syncState.getSessionNo();
-    // NOTE: looks like chronochat was matching on sync states from other users
-    // I *think* we'll want to match on state from the same user here, since 
-    // others won't be updating their files
-    // QUESTION: If note is right, do we need to ensure the state wasn't created by
-    // the current device or will that be fine?
-    // if (tempName != this.userName) {
     if (tempName != this.userName) {
       var index = -1;
       for (var k = 0; k < sendList.length; ++k) {
@@ -290,13 +288,14 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
  */
 ChronoDriveSync.prototype.onData = function (interest, co) {
   // TODO: here I think we need to store the user and the timestamp & checksum to the new 'roster'
+  // and obviously update the files
   var arr = new Uint8Array(co.getContent().size());
   arr.set(co.getContent().buf());
-  var content = this.ChatMessage.decode(arr.buffer);
-
+  var content = this.FileMessage.decode(arr.buffer);
+  console.log('Data packet: ', content);
   var temp = (new Date()).getTime();
-  if (temp - content.timestamp * 1000 < 120000) {
-    var t = (new Date(content.timestamp * 1000)).toLocaleTimeString();
+  if (temp - content.timestamp < 120000) {
+    var t = (new Date(content.timestamp)).toLocaleTimeString();
     var name = content.from;
 
     // chat_prefix should be saved as a name, not a URI string.
@@ -433,19 +432,23 @@ ChronoDriveSync.prototype.sendMessage = function (chatmsg) {
  * Also remove elements from the front of the cache as needed to keep the size to
  * this.maxmsgcachelength.
  */
-ChronoDriveSync.prototype.messageCacheAppend = function (messageType, message) {
+// ChronoDriveSync.prototype.messageCacheAppend = function (messageType, message) {
+ChronoDriveSync.prototype.fileInfoUpdate = function (messageType, message) {
   // NOTE: just need to rework this method to update this.fileInfo, should have everything we need for now
   // TODO: retool to store file states with checksums
-  var d = new Date();
-  var t = d.getTime();
+
+  // chronochat code: adding to cache and removing old entries
+  // var d = new Date();
+  // var t = d.getTime();
+  // this.msgcache.push(new ChronoDriveSync.CachedMessage(this.sync.usrseq, messageType, message, t));
+  // while (this.msgcache.length > this.maxmsgcachelength) {
+  //   this.msgcache.shift();
+  // }
 
   // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests, are created?
   // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
   // If so, this method will need to search through and edit that structure
-  this.msgcache.push(new ChronoDriveSync.CachedMessage(this.sync.usrseq, messageType, message, t));
-  while (this.msgcache.length > this.maxmsgcachelength) {
-    this.msgcache.shift();
-  }
+
 };
 
 ChronoDriveSync.prototype.getRandomString = function () {
