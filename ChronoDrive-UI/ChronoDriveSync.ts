@@ -174,10 +174,8 @@ ChronoDriveSync.prototype.onInterest = function
   //     break;
   //   }
   // }
-
-  // TODO: Use this timestamp to tell if we need to update
+  
   // TODO: Figure out how to use checksum of incoming update
-  // TODO: Figure out how to get file info - maybe store the entries in a cache like with the messages from ChronoChat, a flattened map of files by path?
 
   // TODO: Actually, here we should iterate through the fileInfo/grab the right file, then check the checksum and the timestamp and update if it's older
   // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests are created?
@@ -235,14 +233,14 @@ ChronoDriveSync.prototype.dummyOnData = function (interest, co) {
 
 /**
  * Send a Chat interest to fetch chat messages after the user gets the Sync data packet
- * @param {SyncStates[]} The array of sync states
- * @param {bool} if it's in recovery state
+ * @param {SyncStates[]} syncStates The array of sync states
+ * @param {bool} isRecovery if it's in recovery state
  */
 ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
+  // TODO: Cover the recovery state case
   this.isRecoverySyncState = isRecovery;
 
   var sendList = [];       // of String
-  // NOTE: Session is a timestamp
   var sessionNoList = [];  // of number
   var sequenceNoList = []; // of number
 
@@ -251,7 +249,13 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
     var nameComponents = new Name(syncState.getDataPrefix());
     var tempName = nameComponents.get(-1).toEscapedString();
     var sessionNo = syncState.getSessionNo();
-    if (tempName != this.screen_name) {
+    // NOTE: looks like chronochat was matching on sync states from other users
+    // I *think* we'll want to match on state from the same user here, since 
+    // others won't be updating their files
+    // QUESTION: If note is right, do we need to ensure the state wasn't created by
+    // the current device or will that be fine?
+    // if (tempName != this.userName) {
+    if (tempName != this.userName) {
       var index = -1;
       for (var k = 0; k < sendList.length; ++k) {
         if (sendList[k] == syncState.getDataPrefix()) {
@@ -275,7 +279,7 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
     var uri = sendList[i] + "/" + sessionNoList[i] + "/" + sequenceNoList[i];
     var interest = new Interest(new Name(uri));
     interest.setInterestLifetimeMilliseconds(this.sync_lifetime);
-    this.face.expressInterest(interest, this.onData.bind(this), this.chatTimeout.bind(this));
+    this.face.expressInterest(interest, this.onData.bind(this), this.updateTimeout.bind(this));
   }
 };
 
@@ -329,13 +333,13 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
     //if (content.type == 0 && this.isRecoverySyncState == false && content.from != this.screen_name){
     // Note: the original logic does not display old data;
     // But what if an ordinary application data interest gets answered after entering recovery state?
-    if (content.type == 0 && content.from != this.screen_name) {
+    if (content.type == 0 && content.from != this.userName) {
       console.log(content.from + ": " + content.data);
     }
     else if (content.type == 2) {
       //leave message
       var n = this.roster.indexOf(name + session);
-      if (n != -1 && name != this.screen_name) {
+      if (n != -1 && name != this.userName) {
         this.roster.splice(n, 1);
         for (var i = 0; i < this.roster.length; i++) {
           var name_t = this.roster[i].substring(0, this.roster[i].length - 10);
@@ -352,7 +356,7 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
  * No chat data coming back.
  * @param {Interest}
  */
-ChronoDriveSync.prototype.chatTimeout = function (interest) {
+ChronoDriveSync.prototype.updateTimeout = function (interest) {
 
 };
 
@@ -430,13 +434,12 @@ ChronoDriveSync.prototype.sendMessage = function (chatmsg) {
  * this.maxmsgcachelength.
  */
 ChronoDriveSync.prototype.messageCacheAppend = function (messageType, message) {
+  // NOTE: just need to rework this method to update this.fileInfo, should have everything we need for now
   // TODO: retool to store file states with checksums
   var d = new Date();
   var t = d.getTime();
 
-  // NOTE: if file cache is a map addressable by file name, we can just update the 
-  // file entry each time the file is changed with 
-  // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests are created?
+  // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests, are created?
   // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
   // If so, this method will need to search through and edit that structure
   this.msgcache.push(new ChronoDriveSync.CachedMessage(this.sync.usrseq, messageType, message, t));
@@ -459,36 +462,37 @@ ChronoDriveSync.prototype.getRandomString = function () {
 // QUESTION: Should we keep historical states for files? it seems
 // like this approach would be very data intensive unless we did it with 
 // some sort of diffs
-ChronoDriveSync.CachedMessage = function (seqno, msgtype, msg, time) {
-  // TODO: define file states for cache and update get methods
-  // NOTE: Can call/create this on each file read
+// NOTE: until we start working down that path, this will pretty much be dead code
+// ChronoDriveSync.CachedMessage = function (seqno, msgtype, msg, time) {
+//   // TODO: define file states for cache and update get methods
+//   // NOTE: Can call/create this on each file read
 
-  // NOTE: could store path and file data here to use to send updates for individual files
-  this.seqno = seqno;
-  this.msgtype = msgtype;
-  this.msg = msg;
-  // NOTE: time should probably be last modified time for each file 
-  this.time = time;
-};
+//   // NOTE: could store path and file data here to use to send updates for individual files
+//   this.seqno = seqno;
+//   this.msgtype = msgtype;
+//   this.msg = msg;
+//   // NOTE: time should probably be last modified time for each file 
+//   this.time = time;
+// };
 
-ChronoDriveSync.CachedMessage.prototype.getSequenceNo = function () {
-  return this.seqno;
-};
+// ChronoDriveSync.CachedMessage.prototype.getSequenceNo = function () {
+//   return this.seqno;
+// };
 
-ChronoDriveSync.CachedMessage.prototype.getMessageType = function () {
-  return this.msgtype;
-};
+// ChronoDriveSync.CachedMessage.prototype.getMessageType = function () {
+//   return this.msgtype;
+// };
 
-ChronoDriveSync.CachedMessage.prototype.getMessage = function () {
-  return this.msg;
-};
+// ChronoDriveSync.CachedMessage.prototype.getMessage = function () {
+//   return this.msg;
+// };
 
-/**
- * @return MillisecondsSince1970
- */
-ChronoDriveSync.CachedMessage.prototype.getTime = function () {
-  return this.time;
-};
+// /**
+//  * @return MillisecondsSince1970
+//  */
+// ChronoDriveSync.CachedMessage.prototype.getTime = function () {
+//   return this.time;
+// };
 
 function getRandomNameString() {
   var seed = 'qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM';
@@ -501,6 +505,7 @@ function getRandomNameString() {
 };
 
 // initiateChat() also sends random chat messages so that we don't need input from node JS
+// QUESTION: Do we need this?
 function initiateChat() {
   // Silence the warning from Interest wire encode.
   Interest.setDefaultCanBePrefix(true);
@@ -528,7 +533,7 @@ function initiateChat() {
 
   // TODO: Set some okay defaults here
   var chronoDriveSync = new ChronoDriveSync
-    (screenName, '', HUB_PREFIX, face, keyChain,
+    (screenName, null, '', HUB_PREFIX, face, keyChain,
       keyChain.getDefaultCertificateName(), []);
 
   // Send random test chat message at a fixed interval

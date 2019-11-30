@@ -116,13 +116,13 @@ const DEFAULT_RSA_PRIVATE_KEY_DER = Buffer.from([
   0x3f, 0xb9, 0xfe, 0xbc, 0x8d, 0xda, 0xcb, 0xea, 0x8f
 ]);
 
+// Next few lines ripped from Chronochat-js - https://github.com/named-data/ChronoChat-js/blob/master/index.html
 // ChronoSync Stuff
 // Just use static host for now, allow user to specify in future
 // const host = '/raspberry/pi/test/network/';
 // const face = new Face({ host: host });
 // TODO: specify host later, just using localhost now
 const face = new Face();
-// Next few lines ripped from Chronochat-js - https://github.com/named-data/ChronoChat-js/blob/master/index.html
 const identityStorage = new MemoryIdentityStorage();
 const privateKeyStorage = new MemoryPrivateKeyStorage();
 const keyChain = new KeyChain(new IdentityManager(identityStorage, privateKeyStorage), new SelfVerifyPolicyManager(identityStorage));
