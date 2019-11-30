@@ -1,5 +1,10 @@
 import { Name, Face, ChronoSync2013, Interest, Data, Blob, UnixTransport, SafeBag, KeyChain } from 'ndn-js';
-import { FileSync, FileMessage } from './filebuf';
+import { FileInfo } from './src/app/types/DirectoryInfo';
+import { getLastUpdateMs } from './main';
+// NOTE: this ts file won't work with protobufjs 5.0.3
+// import { FileMessage } from './filebuf';
+const ProtoBuf = require("protobufjs");
+const fileMessageBuilder = ProtoBuf.loadProtoFile('./filebuf.proto');
 
 // Encryption Keys - probably a way better way to do this
 const DEFAULT_RSA_PUBLIC_KEY_DER = Buffer.from([
@@ -101,9 +106,12 @@ const DEFAULT_RSA_PRIVATE_KEY_DER = Buffer.from([
   0x3f, 0xb9, 0xfe, 0xbc, 0x8d, 0xda, 0xcb, 0xea, 0x8f
 ]);
 
-const ChronoDriveSync = function (userName, lastUpdated, userDirChecksum, hubPrefix, face, keyChain, certificateName) {
+// NOTE: Default ndn prefix
+// const HUB_PREFIX = "ndn/edu/ucla/remap";
+const HUB_PREFIX = "ndn/edu/unomaha/adhoc/pi";
+
+const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirChecksum: string, hubPrefix: string, face, keyChain, certificateName, roster: string[]) {
   this.userName = userName;
-  this.lastUpdated = lastUpdated;
   this.userDirChecksum = userDirChecksum;
   this.maxmsgcachelength = 100;
   this.isRecoverySyncState = true;
@@ -114,12 +122,19 @@ const ChronoDriveSync = function (userName, lastUpdated, userDirChecksum, hubPre
 
   this.chat_prefix = (new Name(hubPrefix)).append(this.userName).append(this.getRandomString());
 
-  // QUESTION: Do we continue to use this roster? I think the info we need could be grabbed from the file cache
-  // May be easier to just keep the condensed info in a separate data structure though
-  this.roster = [];
+  // QUESTION: Do we continue to use this roster? this will make it possible to keep stored users' directories updated without relying on 
+  // a login but will mean we'll need to initialize the sync before a login
+  this.roster = roster;
   // NOTE: if file cache is a map addressable by file name, we can just update the 
   // file entry each time the file is changed with 
-  this.msgcache = [];
+  // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests are created?
+  // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
+  // QUESTION: Should we keep historical states for files? it seems
+  // like this approach would be very data intensive unless we did it with 
+  // some sort of diffs
+  // Could just keep a shorter list of updates
+  // this.msgcache = [];
+  this.fileInfo = fileInfo;
 
   //console.log("The local chat prefix " + this.chat_prefix.toUri() + " ***");
 
@@ -127,7 +142,7 @@ const ChronoDriveSync = function (userName, lastUpdated, userDirChecksum, hubPre
   // QUESTION: What is it good for if we have the last modified for each individual file
   var session = (new Date()).getTime();
 
-  this.FileMessage = FileSync;
+  this.FileMessage = fileMessageBuilder.build('FileMessage');
 
   // console.log(this.screen_name + ", welcome to chatroom " + this.chatroom + "!");
   this.sync = new ChronoSync2013(this.sendInterest.bind(this), this.initial.bind(this), this.chat_prefix, (new Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName), session, face, keyChain, certificateName, this.sync_lifetime, this.onRegisterFailed.bind(this));
@@ -144,7 +159,7 @@ const ChronoDriveSync = function (userName, lastUpdated, userDirChecksum, hubPre
  */
 ChronoDriveSync.prototype.onInterest = function
   (prefix, interest, face, interestFilterId, filter) {
-  let content: FileMessage = null;
+  let content = null;
 
   // chat_prefix should really be saved as a name, not a URI string.
   var chatPrefixSize = new Name(this.chat_prefix).size();
@@ -163,20 +178,25 @@ ChronoDriveSync.prototype.onInterest = function
   // TODO: Use this timestamp to tell if we need to update
   // TODO: Figure out how to use checksum of incoming update
   // TODO: Figure out how to get file info - maybe store the entries in a cache like with the messages from ChronoChat, a flattened map of files by path?
-  var timestamp = parseInt(interest.getName().get(chatPrefixSize + 1).toEscapedString());
-  if (timestamp > this.lastUpdated) {
-    content = new this.FileMessage({
+
+  // TODO: Actually, here we should iterate through the fileInfo/grab the right file, then check the checksum and the timestamp and update if it's older
+  // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests are created?
+  // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
+  const interestTimestamp = parseInt(interest.getName().get(chatPrefixSize + 1).toEscapedString());
+  const lastLocalUpdate = getLastUpdateMs(this.fileInfo);
+  if (lastLocalUpdate > interestTimestamp) {
+    content = {
       user: this.userName,
-      filename: '',
-      path: '',
-      type: '',
-      timestamp: 0,
-      data: ''
-    });
+      filename: this.fileInfo.entry.name,
+      path: this.fileInfo.path,
+      type: 'UPDATE',
+      timestamp: lastLocalUpdate,
+      data: JSON.stringify(this.fileInfo)
+    };
   }
 
   if (content) {
-    var str = new Uint8Array(content.toArrayBuffer());
+    var str = new Uint8Array(this.FileMessage.encode(content));
     var co = new Data(interest.getName());
     co.setContent(str);
     this.keyChain.sign(co);
@@ -197,6 +217,7 @@ ChronoDriveSync.prototype.initial = function () {
 
   this.face.expressInterest(timeout, this.dummyOnData, this.heartbeat.bind(this));
 
+  // TODO: Implement the equivalent of below, if using the roster as a digest log
   // if (this.roster.indexOf(this.usrname) == -1) {
   //   this.roster.push(this.usrname);
   //   //console.log("*** Local member " + this.usrname + " joins. ***");
@@ -415,6 +436,9 @@ ChronoDriveSync.prototype.messageCacheAppend = function (messageType, message) {
 
   // NOTE: if file cache is a map addressable by file name, we can just update the 
   // file entry each time the file is changed with 
+  // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests are created?
+  // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
+  // If so, this method will need to search through and edit that structure
   this.msgcache.push(new ChronoDriveSync.CachedMessage(this.sync.usrseq, messageType, message, t));
   while (this.msgcache.length > this.maxmsgcachelength) {
     this.msgcache.shift();
@@ -481,9 +505,6 @@ function initiateChat() {
   // Silence the warning from Interest wire encode.
   Interest.setDefaultCanBePrefix(true);
 
-  // TODO: rename this with the hub for our pi network
-  var hubPrefix = "ndn/edu/ucla/remap";
-
   // TODO: Figure out if this is necessary; if we only initialize sync after login, we probably don't need it
   //  and if we do it before, I think we should be able to pull the names from ./AppData
   var screenName = getRandomNameString();
@@ -505,10 +526,10 @@ function initiateChat() {
 
   face.setCommandSigningInfo(keyChain, keyChain.getDefaultCertificateName());
 
-  // TODO: need to get lastUpdated and checksum to pass to constructor here
+  // TODO: Set some okay defaults here
   var chronoDriveSync = new ChronoDriveSync
-    (screenName, 0, '', hubPrefix, face, keyChain,
-      keyChain.getDefaultCertificateName());
+    (screenName, '', HUB_PREFIX, face, keyChain,
+      keyChain.getDefaultCertificateName(), []);
 
   // Send random test chat message at a fixed interval
   var num = 0;
@@ -521,4 +542,7 @@ function initiateChat() {
     }, 2000);
 }
 
-initiateChat();
+// TODO: Will probably need to call this in the main.ts
+// initiateChat();
+
+export { ChronoDriveSync, HUB_PREFIX };

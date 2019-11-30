@@ -1,98 +1,33 @@
+// TODO: Apparently this won't work with protobufjs 5.0.3, which is what ndn-js needs
+// Need to fork ndn-js and update to use current protobufjs
 
-import * as ProtoBuf from './Protobuf/protobuf.min.js';
+import { Message, Type, Field } from "protobufjs";
 
-let FileSync = ProtoBuf.newBuilder().import({
-    "package": "FileSync",
-    "messages": [
-        {
-            "name": "FileMessage",
-            "fields": [
-                {
-                    "rule": "required",
-                    "type": "string",
-                    "name": "user",
-                    "id": 1,
-                    "options": {}
-                },
-                {
-                    "rule": "required",
-                    "type": "string",
-                    "name": "filename",
-                    "id": 2,
-                    "options": {}
-                },
-                {
-                    "rule": "required",
-                    "type": "string",
-                    "name": "path",
-                    "id": 3,
-                    "options": {}
-                },
-                {
-                    "rule": "required",
-                    "type": "FileMessageType",
-                    "name": "type",
-                    "id": 4,
-                    "options": {
-                        "default": "UPDATE"
-                    }
-                },
-                {
-                    "rule": "required",
-                    "type": "int32",
-                    "name": "timestamp",
-                    "id": 5,
-                    "options": {}
-                },
-                {
-                    "rule": "optional",
-                    "type": "string",
-                    "name": "data",
-                    "id": 6,
-                    "options": {}
-                }
-            ],
-            "enums": [
-                {
-                    "name": "FileMessageType",
-                    "values": [
-                        {
-                            "name": "ADD",
-                            "id": 0
-                        },
-                        {
-                            "name": "UPDATE",
-                            "id": 1
-                        },
-                        {
-                            "name": "DELETE",
-                            "id": 2
-                        },
-                        {
-                            "name": "OTHER",
-                            "id": 3
-                        }
-                    ],
-                    "options": {}
-                }
-            ],
-            "messages": [],
-            "options": {}
-        }
-    ],
-    "enums": [],
-    "imports": [],
-    "options": {}
-}).build("FileSync")
-
-interface FileMessage {
-    user: string;
-    filename: string;
-    path: string;
-    type: string;
-    timestamp: number;
-    data?: string;
-    toArrayBuffer(): Iterable<number>;
+export enum FileMessageType {
+    ADD = 0,
+    UPDATE = 1,
+    DELETE = 2,
+    OTHER = 3,
 }
 
-export { FileSync, FileMessage };
+@Type.d("FileMessage")
+export class FileMessage extends Message<FileMessage> {
+
+    @Field.d(1, "string")
+    public user: string;
+
+    @Field.d(2, "string")
+    public filename: string;
+
+    @Field.d(3, "string")
+    public path: string;
+
+    @Field.d(4, FileMessageType)
+    public type: FileMessageType;
+
+    @Field.d(5, "int32")
+    public timestamp: number;
+
+    @Field.d(6, "string", "optional")
+    public data: string;
+}

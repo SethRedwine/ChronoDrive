@@ -1,14 +1,16 @@
 import { app, BrowserWindow, screen } from 'electron';
-const { ipcMain } = require('electron');
-const fs = require('fs');
-const crypto = require('crypto');
-var watch = require('node-watch');
 import * as path from 'path';
 import * as url from 'url';
 import { FileInfo } from './src/app/types/DirectoryInfo';
 import { Face, MemoryIdentityStorage, MemoryPrivateKeyStorage, KeyChain, IdentityManager, SelfVerifyPolicyManager, Name, KeyType, Blob } from 'ndn-js';
-
-let win, serve;
+import { ChronoDriveSync, HUB_PREFIX } from './ChronoDriveSync';
+const { ipcMain } = require('electron');
+const fs = require('fs');
+const { join } = require('path')
+const watch = require('node-watch');
+const crypto = require('crypto');
+const { hashElement } = require('folder-hash');
+let win, serve, chronoDrive;
 const args = process.argv.slice(1);
 serve = args.some(val => val === '--serve');
 const APP_DATA_DIR = './AppData';
@@ -116,8 +118,10 @@ const DEFAULT_RSA_PRIVATE_KEY_DER = Buffer.from([
 
 // ChronoSync Stuff
 // Just use static host for now, allow user to specify in future
-const host = '/raspberry/pi/test/network/';
-const face = new Face({ host: host });
+// const host = '/raspberry/pi/test/network/';
+// const face = new Face({ host: host });
+// TODO: specify host later, just using localhost now
+const face = new Face();
 // Next few lines ripped from Chronochat-js - https://github.com/named-data/ChronoChat-js/blob/master/index.html
 const identityStorage = new MemoryIdentityStorage();
 const privateKeyStorage = new MemoryPrivateKeyStorage();
@@ -128,6 +132,12 @@ identityStorage.addKey(keyName, KeyType.RSA, new Blob(DEFAULT_RSA_PUBLIC_KEY_DER
 privateKeyStorage.setKeyPairForKeyName(keyName, KeyType.RSA, DEFAULT_RSA_PUBLIC_KEY_DER, DEFAULT_RSA_PRIVATE_KEY_DER);
 face.setCommandSigningInfo(keyChain, certificateName);
 
+let users = getUsers();
+console.log('Users: ' + users);
+watch(`${APP_DATA_DIR}`, { recursive: true }, (event, filename) => {
+  users = getUsers();
+  console.log('Users: ' + users);
+});
 
 function createWindow() {
 
@@ -208,24 +218,33 @@ try {
       fs.mkdirSync(USER_DATA_DIR);
     }
     const files: FileInfo = getDirInfo(USER_DATA_DIR);
+    const lastUpdated = getLastUpdateMs(files);
     evt.reply('directory-update', files);
+
     // Watch the data directory and push changes to the UI
-    let fsWait = false;
     watch(`${USER_DATA_DIR}`, { recursive: true }, (event, filename) => {
-      if (filename) {
-        if (fsWait) return;
-        setTimeout(() => {
-          fsWait = false;
-        }, 100);
-
-        const files: FileInfo = getDirInfo(USER_DATA_DIR);
-        win.webContents.send('directory-update', files);
-      }
+      const files: FileInfo = getDirInfo(USER_DATA_DIR);
+      win.webContents.send('directory-update', files);
     });
+
+    hashElement(USER_DATA_DIR)
+      .then(userDirChecksum => {
+        // Start the sync
+        console.log('ChronoDriveSync -');
+        console.log('User: ' + msg.user);
+        console.log('Last File Update: ' + new Date(lastUpdated));
+        console.log('User Dir Checksum: ' + userDirChecksum);
+        console.log('Hub Prefix: ' + HUB_PREFIX);
+        console.log('Other Users: ' + users);
+        files.checksum = userDirChecksum.hash;
+
+        // TODO: initialize this before login to catch updates for all users, and not require login for sync
+        chronoDrive = new ChronoDriveSync(msg.user, files, userDirChecksum.hash, HUB_PREFIX, face, keyChain, certificateName, users);
+      })
+      .catch(error => {
+        return console.error('hashing failed:', error);
+      });
   });
-
-
-
 } catch (e) {
   // Catch Error
   // throw e;
@@ -234,14 +253,17 @@ try {
 
 function getDirInfo(dirPath, dirEntry = null): FileInfo {
   const entries = fs.readdirSync(dirPath, { encoding: 'utf8', withFileTypes: true });
+
+  const stats = fs.statSync(dirPath);
   const dir = {
     entry: dirEntry,
-    isDirectory: fs.statSync(dirPath).isDirectory(),
+    isDirectory: stats.isDirectory(),
     path: dirPath,
-    stats: fs.statSync(dirPath),
+    stats,
     entries: [],
     fileContents: null,
-    checksum: null
+    checksum: null,
+    lastUpdate: stats.mtime.getTime()
   }
   for (const entry of entries) {
     let ent = null
@@ -249,25 +271,23 @@ function getDirInfo(dirPath, dirEntry = null): FileInfo {
     if (entry.isDirectory()) {
       ent = getDirInfo(entPath, entry);
     } else {
+      const entStats = fs.statSync(entPath);
       ent = {
         entry: entry,
         isDirectory: false,
         path: entPath,
-        stats: fs.statSync(entPath),
+        stats: entStats,
         entries: null,
         fileContents: null,
-        checksum: null
+        checksum: null,
+        lastUpdate: entStats.mtime.getTime()
       }
       fs.readFile(entPath, function (err, data) {
         if (err) throw err;
-        // console.log(data);
         ent.fileContents = data;
         ent.checksum = checksum(data);
-        // TODO: Check checksums (or something else) to ensure contents aren't already the same
-        // This should keep the app from entering an infinite loop of updates like would happen if 
-        // we only used timestamp
-        writeFile('./chronotemp/' + entry.name, data);
-        console.log(entry.name + ' Checksum: ' + ent.checksum);
+        // console.log(data);
+        // console.log(entry.name + ' Checksum: ' + ent.checksum);
       });
     }
     dir.entries.push(ent);
@@ -291,4 +311,22 @@ function checksum(str: string, algorithm?: string, encoding?: string) {
     .createHash(algorithm || 'md5')
     .update(str, 'utf8')
     .digest(encoding || 'hex')
+}
+
+function getUsers(): string[] {
+  if (!fs.existsSync(APP_DATA_DIR)) {
+    return [];
+  }
+  return fs.readdirSync(APP_DATA_DIR).filter(file => fs.statSync(join(APP_DATA_DIR, file)).isDirectory());
+}
+
+export function getLastUpdateMs(files: FileInfo): number {
+  let lastUpdate = files.lastUpdate;
+  if (files.entries) {
+    for (const entry of files.entries) {
+      const lastSubFileUpdate = getLastUpdateMs(entry);
+      lastUpdate = lastSubFileUpdate > lastUpdate ? lastSubFileUpdate : lastUpdate;
+    }
+  }
+  return lastUpdate;
 }

@@ -1,14 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var electron_1 = require("electron");
-var ipcMain = require('electron').ipcMain;
-var fs = require('fs');
-var crypto = require('crypto');
-var watch = require('node-watch');
 var path = require("path");
 var url = require("url");
 var ndn_js_1 = require("ndn-js");
-var win, serve;
+var ChronoDriveSync_1 = require("./ChronoDriveSync");
+var ipcMain = require('electron').ipcMain;
+var fs = require('fs');
+var join = require('path').join;
+var watch = require('node-watch');
+var crypto = require('crypto');
+var hashElement = require('folder-hash').hashElement;
+var win, serve, chronoDrive;
 var args = process.argv.slice(1);
 serve = args.some(function (val) { return val === '--serve'; });
 var APP_DATA_DIR = './AppData';
@@ -114,8 +117,10 @@ var DEFAULT_RSA_PRIVATE_KEY_DER = Buffer.from([
 ]);
 // ChronoSync Stuff
 // Just use static host for now, allow user to specify in future
-var host = '/raspberry/pi/test/network/';
-var face = new ndn_js_1.Face({ host: host });
+// const host = '/raspberry/pi/test/network/';
+// const face = new Face({ host: host });
+// TODO: specify host later, just using localhost now
+var face = new ndn_js_1.Face();
 // Next few lines ripped from Chronochat-js - https://github.com/named-data/ChronoChat-js/blob/master/index.html
 var identityStorage = new ndn_js_1.MemoryIdentityStorage();
 var privateKeyStorage = new ndn_js_1.MemoryPrivateKeyStorage();
@@ -125,6 +130,12 @@ var certificateName = keyName.getSubName(0, keyName.size() - 1).append("KEY").ap
 identityStorage.addKey(keyName, ndn_js_1.KeyType.RSA, new ndn_js_1.Blob(DEFAULT_RSA_PUBLIC_KEY_DER, false));
 privateKeyStorage.setKeyPairForKeyName(keyName, ndn_js_1.KeyType.RSA, DEFAULT_RSA_PUBLIC_KEY_DER, DEFAULT_RSA_PRIVATE_KEY_DER);
 face.setCommandSigningInfo(keyChain, certificateName);
+var users = getUsers();
+console.log('Users: ' + users);
+watch("" + APP_DATA_DIR, { recursive: true }, function (event, filename) {
+    users = getUsers();
+    console.log('Users: ' + users);
+});
 function createWindow() {
     var electronScreen = electron_1.screen;
     var size = electronScreen.getPrimaryDisplay().workAreaSize;
@@ -193,19 +204,28 @@ try {
             fs.mkdirSync(USER_DATA_DIR);
         }
         var files = getDirInfo(USER_DATA_DIR);
+        var lastUpdated = getLastUpdateMs(files);
         evt.reply('directory-update', files);
         // Watch the data directory and push changes to the UI
-        var fsWait = false;
         watch("" + USER_DATA_DIR, { recursive: true }, function (event, filename) {
-            if (filename) {
-                if (fsWait)
-                    return;
-                setTimeout(function () {
-                    fsWait = false;
-                }, 100);
-                var files_1 = getDirInfo(USER_DATA_DIR);
-                win.webContents.send('directory-update', files_1);
-            }
+            var files = getDirInfo(USER_DATA_DIR);
+            win.webContents.send('directory-update', files);
+        });
+        hashElement(USER_DATA_DIR)
+            .then(function (userDirChecksum) {
+            // Start the sync
+            console.log('ChronoDriveSync -');
+            console.log('User: ' + msg.user);
+            console.log('Last File Update: ' + new Date(lastUpdated));
+            console.log('User Dir Checksum: ' + userDirChecksum);
+            console.log('Hub Prefix: ' + ChronoDriveSync_1.HUB_PREFIX);
+            console.log('Other Users: ' + users);
+            files.checksum = userDirChecksum.hash;
+            // TODO: initialize this before login to catch updates for all users, and not require login for sync
+            chronoDrive = new ChronoDriveSync_1.ChronoDriveSync(msg.user, lastUpdated, userDirChecksum.hash, ChronoDriveSync_1.HUB_PREFIX, face, keyChain, certificateName, users);
+        })
+            .catch(function (error) {
+            return console.error('hashing failed:', error);
         });
     });
 }
@@ -217,14 +237,16 @@ catch (e) {
 function getDirInfo(dirPath, dirEntry) {
     if (dirEntry === void 0) { dirEntry = null; }
     var entries = fs.readdirSync(dirPath, { encoding: 'utf8', withFileTypes: true });
+    var stats = fs.statSync(dirPath);
     var dir = {
         entry: dirEntry,
-        isDirectory: fs.statSync(dirPath).isDirectory(),
+        isDirectory: stats.isDirectory(),
         path: dirPath,
-        stats: fs.statSync(dirPath),
+        stats: stats,
         entries: [],
         fileContents: null,
-        checksum: null
+        checksum: null,
+        lastUpdate: stats.mtime.getTime()
     };
     var _loop_1 = function (entry) {
         var ent = null;
@@ -233,26 +255,24 @@ function getDirInfo(dirPath, dirEntry) {
             ent = getDirInfo(entPath, entry);
         }
         else {
+            var entStats = fs.statSync(entPath);
             ent = {
                 entry: entry,
                 isDirectory: false,
                 path: entPath,
-                stats: fs.statSync(entPath),
+                stats: entStats,
                 entries: null,
                 fileContents: null,
-                checksum: null
+                checksum: null,
+                lastUpdate: entStats.mtime.getTime()
             };
             fs.readFile(entPath, function (err, data) {
                 if (err)
                     throw err;
-                // console.log(data);
                 ent.fileContents = data;
                 ent.checksum = checksum(data);
-                // TODO: Check checksums (or something else) to ensure contents aren't already the same
-                // This should keep the app from entering an infinite loop of updates like would happen if 
-                // we only used timestamp
-                writeFile('./chronotemp/' + entry.name, data);
-                console.log(entry.name + ' Checksum: ' + ent.checksum);
+                // console.log(data);
+                // console.log(entry.name + ' Checksum: ' + ent.checksum);
             });
         }
         dir.entries.push(ent);
@@ -278,5 +298,22 @@ function checksum(str, algorithm, encoding) {
         .createHash(algorithm || 'md5')
         .update(str, 'utf8')
         .digest(encoding || 'hex');
+}
+function getUsers() {
+    if (!fs.existsSync(APP_DATA_DIR)) {
+        return [];
+    }
+    return fs.readdirSync(APP_DATA_DIR).filter(function (file) { return fs.statSync(join(APP_DATA_DIR, file)).isDirectory(); });
+}
+function getLastUpdateMs(files) {
+    var lastUpdate = files.lastUpdate;
+    if (files.entries) {
+        for (var _i = 0, _a = files.entries; _i < _a.length; _i++) {
+            var entry = _a[_i];
+            var lastSubFileUpdate = getLastUpdateMs(entry);
+            lastUpdate = lastSubFileUpdate > lastUpdate ? lastSubFileUpdate : lastUpdate;
+        }
+    }
+    return lastUpdate;
 }
 //# sourceMappingURL=main.js.map

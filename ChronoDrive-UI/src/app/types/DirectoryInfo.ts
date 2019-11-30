@@ -7,6 +7,8 @@ class FileInfo {
     stats: Stats;
     entries: FileInfo[];
     fileContents: File;
+    checksum: string;
+    lastUpdate: number;
 }
 
 export { FileInfo }
