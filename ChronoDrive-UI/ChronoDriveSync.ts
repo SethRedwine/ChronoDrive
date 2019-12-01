@@ -120,6 +120,7 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   this.keyChain = keyChain;
   this.certificateName = certificateName;
 
+  // TODO: rename prefix - we're filing, not chatting
   this.chat_prefix = (new Name(hubPrefix)).append(this.userName).append(this.getRandomString());
 
   // QUESTION: Do we continue to use this roster? this will make it possible to keep stored users' directories updated without relying on 
@@ -253,7 +254,7 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
     var nameComponents = new Name(syncState.getDataPrefix());
     var tempName = nameComponents.get(-1).toEscapedString();
     var sessionNo = syncState.getSessionNo();
-    if (tempName != this.userName) {
+    if (tempName == this.userName) {
       var index = -1;
       for (var k = 0; k < sendList.length; ++k) {
         if (sendList[k] == syncState.getDataPrefix()) {
@@ -274,6 +275,7 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
   }
 
   for (var i = 0; i < sendList.length; ++i) {
+    // NOTE: Here is where we build interest name
     var uri = sendList[i] + "/" + sessionNoList[i] + "/" + sequenceNoList[i];
     var interest = new Interest(new Name(uri));
     interest.setInterestLifetimeMilliseconds(this.sync_lifetime);
@@ -289,6 +291,7 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
 ChronoDriveSync.prototype.onData = function (interest, co) {
   // TODO: here I think we need to store the user and the timestamp & checksum to the new 'roster'
   // and obviously update the files
+  // TODO: Handle recovery state
   var arr = new Uint8Array(co.getContent().size());
   arr.set(co.getContent().buf());
   var content = this.FileMessage.decode(arr.buffer);
@@ -296,7 +299,7 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
   var temp = (new Date()).getTime();
   if (temp - content.timestamp < 120000) {
     var t = (new Date(content.timestamp)).toLocaleTimeString();
-    var name = content.from;
+    var name = content.user;
 
     // chat_prefix should be saved as a name, not a URI string.
     var prefix = co.getName().getPrefix(-2).toUri();
@@ -307,46 +310,31 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
     var seqno = parseInt((co.getName().get(-1)).toEscapedString());
     var l = 0;
 
-    //update roster
+    // update roster
     while (l < this.roster.length) {
-      var name_t = this.roster[l].substring(0, this.roster[l].length - 10);
-      var session_t = this.roster[l].substring(this.roster[l].length - 10, this.roster[l].length);
-      if (name != name_t && content.type != 2)
-        l++;
-      else {
-        if (name == name_t && session > session_t) {
-          this.roster[l] = name + session;
-        }
+      var name_t = this.roster[l].substring(0, this.roster[l].length - name.length);
+      var session_t = this.roster[l].substring(this.roster[l].length - name.length, this.roster[l].length);
+      if (name == name_t && session > session_t) {
+        this.roster[l] = name + session;
         break;
+      } else {
+        l++;
       }
     }
 
+    // QUESTION: Will this ever even get hit since we should have every one that has logged in on device?
+    // If it does, does that mean we're catching updates we shouldn't, eg ChronoDrive updates for users that
+    // never logged in here
     if (l == this.roster.length) {
       this.roster.push(name + session);
-      console.log("JOIN: " + name + session);
     }
     var timeout = new Interest(new Name("/local/timeout"));
     timeout.setInterestLifetimeMilliseconds(120000);
     this.face.expressInterest(timeout, this.dummyOnData, this.alive.bind(this, timeout, seqno, name, session, prefix));
 
-    //if (content.type == 0 && this.isRecoverySyncState == false && content.from != this.screen_name){
-    // Note: the original logic does not display old data;
-    // But what if an ordinary application data interest gets answered after entering recovery state?
-    if (content.type == 0 && content.from != this.userName) {
-      console.log(content.from + ": " + content.data);
-    }
-    else if (content.type == 2) {
-      //leave message
-      var n = this.roster.indexOf(name + session);
-      if (n != -1 && name != this.userName) {
-        this.roster.splice(n, 1);
-        for (var i = 0; i < this.roster.length; i++) {
-          var name_t = this.roster[i].substring(0, this.roster[i].length - 10);
-        }
-
-        var d = new Date(content.timestamp * 1000);
-        var t = d.toLocaleTimeString();
-      }
+    if (content.user != this.userName) {
+      // Got non logged in user data, should probably write it
+      console.log(content.user + ": " + content.data);
     }
   }
 };
@@ -364,13 +352,10 @@ ChronoDriveSync.prototype.updateTimeout = function (interest) {
  * @param {Interest}
  */
 ChronoDriveSync.prototype.heartbeat = function (interest) {
-  // Based on ndn-cpp library approach
-  if (this.msgcache.length == 0) {
-    // Is it possible that this gets executed?
-    this.messageCacheAppend("JOIN", "xxx");
-  }
+  // TODO: A better heartbeat, once we have a cache of actual updates instead
+  // of just file state
   this.sync.publishNextSequenceNo();
-  this.messageCacheAppend("HELLO", "xxx");
+  this.fileInfoUpdate("UPDATE", this.fileInfo);
 
   // Making a timeout interest for heartbeat...
   var timeout = new Interest(new Name("/local/timeout"));
@@ -393,36 +378,31 @@ ChronoDriveSync.prototype.heartbeat = function (interest) {
  * @param {string}
  */
 ChronoDriveSync.prototype.alive = function (interest, temp_seq, name, session, prefix) {
-  //console.log("check alive");
-  // NOTE: Session is a timestamp
-  var index_n = this.sync.digest_tree.find(prefix, session);
-  var n = this.roster.indexOf(name + session);
-
-  if (index_n != -1 && n != -1) {
-    var seq = this.sync.digest_tree.digestnode[index_n].seqno.seq;
-    if (temp_seq == seq) {
-      this.roster.splice(n, 1);
-      console.log(name + " leave");
-      var d = new Date();
-      var t = d.toLocaleTimeString();
-      // records the time of leaving
-    }
-  }
+  // NOTE: I'm not sure we need to do anything here on a timeout 
+  // //console.log("check alive");
+  // // NOTE: Session is a timestamp
+  // var index_n = this.sync.digest_tree.find(prefix, session);
+  // var n = this.roster.indexOf(name + session);
+  // if (index_n != -1 && n != -1) {
+  //   var seq = this.sync.digest_tree.digestnode[index_n].seqno.seq;
+  //   if (temp_seq == seq) {
+  //     this.roster.splice(n, 1);
+  //     console.log(name + " leave");
+  //     var d = new Date();
+  //     var t = d.toLocaleTimeString();
+  //     // records the time of leaving
+  //   }
+  // }
 };
 
 /**
  * @param {string}
  */
-ChronoDriveSync.prototype.sendMessage = function (chatmsg) {
-  // TODO: Won't need the join message, here the chat message will be the root FileElement
-  // for the user whose data was updated or the individual file to be updated for the user
-  if (this.msgcache.length == 0)
-    this.messageCacheAppend("JOIN", "xxx");
-  if (chatmsg != "") {
+ChronoDriveSync.prototype.sendFiles = function (fileInfo) {
+  if (fileInfo && fileInfo.path) {
     this.sync.publishNextSequenceNo();
-    // TODO: update the file state cache?
-    this.messageCacheAppend("CHAT", chatmsg);
-    // TODO: update display in UI? nvm should be handled by watcher
+    // TODO: Handle different file message types
+    this.fileInfoUpdate("UPDATE", fileInfo);
   }
 }
 
@@ -433,9 +413,9 @@ ChronoDriveSync.prototype.sendMessage = function (chatmsg) {
  * this.maxmsgcachelength.
  */
 // ChronoDriveSync.prototype.messageCacheAppend = function (messageType, message) {
-ChronoDriveSync.prototype.fileInfoUpdate = function (messageType, message) {
-  // NOTE: just need to rework this method to update this.fileInfo, should have everything we need for now
+ChronoDriveSync.prototype.fileInfoUpdate = function (fileMessageType: string, fileInfo: FileInfo) {
   // TODO: retool to store file states with checksums
+  // TODO: Handle different file message types
 
   // chronochat code: adding to cache and removing old entries
   // var d = new Date();
@@ -448,7 +428,7 @@ ChronoDriveSync.prototype.fileInfoUpdate = function (messageType, message) {
   // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests, are created?
   // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
   // If so, this method will need to search through and edit that structure
-
+  this.fileInfo = fileInfo;
 };
 
 ChronoDriveSync.prototype.getRandomString = function () {
