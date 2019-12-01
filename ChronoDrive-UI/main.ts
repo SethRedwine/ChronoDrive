@@ -253,7 +253,7 @@ try {
     hashElement(USER_DATA_DIR)
       .then(userDirChecksum => {
         // Start the sync
-        console.log('ChronoDriveSync -');
+        console.log('Initializing ChronoDriveSync...');
         console.log('User: ' + msg.user);
         console.log('Last File Update: ' + new Date(lastUpdated));
         console.log('User Dir Checksum: ' + userDirChecksum.hash);
