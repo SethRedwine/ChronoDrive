@@ -17,7 +17,7 @@ const APP_DATA_DIR = './AppData';
 let USER_DATA_DIR = APP_DATA_DIR;
 
 // Encryption Keys - probably a way better way to do this
-const DEFAULT_RSA_PUBLIC_KEY_DER = Buffer.from([
+export const DEFAULT_RSA_PUBLIC_KEY_DER = Buffer.from([
   0x30, 0x82, 0x01, 0x22, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
   0x01, 0x05, 0x00, 0x03, 0x82, 0x01, 0x0f, 0x00, 0x30, 0x82, 0x01, 0x0a, 0x02, 0x82, 0x01, 0x01,
   0x00, 0xb8, 0x09, 0xa7, 0x59, 0x82, 0x84, 0xec, 0x4f, 0x06, 0xfa, 0x1c, 0xb2, 0xe1, 0x38, 0x93,
@@ -38,7 +38,7 @@ const DEFAULT_RSA_PUBLIC_KEY_DER = Buffer.from([
   0xfe, 0x15, 0x19, 0x1d, 0xdc, 0x7e, 0x5c, 0x10, 0x21, 0x52, 0x21, 0x91, 0x54, 0x60, 0x8b, 0x92,
   0x41, 0x02, 0x03, 0x01, 0x00, 0x01
 ]);
-const DEFAULT_RSA_PRIVATE_KEY_DER = Buffer.from([
+export const DEFAULT_RSA_PRIVATE_KEY_DER = Buffer.from([
   0x30, 0x82, 0x04, 0xa5, 0x02, 0x01, 0x00, 0x02, 0x82, 0x01, 0x01, 0x00, 0xb8, 0x09, 0xa7, 0x59,
   0x82, 0x84, 0xec, 0x4f, 0x06, 0xfa, 0x1c, 0xb2, 0xe1, 0x38, 0x93, 0x53, 0xbb, 0x7d, 0xd4, 0xac,
   0x88, 0x1a, 0xf8, 0x25, 0x11, 0xe4, 0xfa, 0x1d, 0x61, 0x24, 0x5b, 0x82, 0xca, 0xcd, 0x72, 0xce,
@@ -134,10 +134,12 @@ face.setCommandSigningInfo(keyChain, certificateName);
 
 let users = getUsers();
 console.log('Users: ' + users);
-watch(`${APP_DATA_DIR}`, { recursive: true }, (event, filename) => {
+watch(`${APP_DATA_DIR}`, { recursive: false }, (event, filename) => {
   users = getUsers();
   console.log('Users: ' + users);
 });
+
+let fileWatcherDebounce = false;
 
 function createWindow() {
 
@@ -214,6 +216,7 @@ try {
   ipcMain.on('login', (evt, msg) => {
     // Ensure that the directory for this specific user has been initialized
     USER_DATA_DIR = `${APP_DATA_DIR}/${msg.user}`;
+    console.log('Repo: ' + USER_DATA_DIR);
     if (!fs.existsSync(USER_DATA_DIR)) {
       fs.mkdirSync(USER_DATA_DIR);
     }
@@ -223,8 +226,28 @@ try {
 
     // Watch the data directory and push changes to the UI
     watch(`${USER_DATA_DIR}`, { recursive: true }, (event, filename) => {
-      const files: FileInfo = getDirInfo(USER_DATA_DIR);
-      win.webContents.send('directory-update', files);
+      if (fileWatcherDebounce) {
+        // Waiting on timeout from debounce
+        return;
+      } else {
+        // Debouncing file stuffs
+        fileWatcherDebounce = true;
+        setTimeout(() => {
+          console.log(' - FILE WATCHER FIRED - ');
+          const files: FileInfo = getDirInfo(USER_DATA_DIR);
+          win.webContents.send('directory-update', files);
+          hashElement(USER_DATA_DIR)
+            .then(userDirChecksum => {
+              files.checksum = userDirChecksum.hash;
+              console.log('Sending sync update...');
+              chronoDrive.sendFiles(files);
+            })
+            .catch(error => {
+              return console.error(error);
+            });
+          fileWatcherDebounce = false;
+        }, 500)
+      }
     });
 
     hashElement(USER_DATA_DIR)
@@ -233,16 +256,15 @@ try {
         console.log('ChronoDriveSync -');
         console.log('User: ' + msg.user);
         console.log('Last File Update: ' + new Date(lastUpdated));
-        console.log('User Dir Checksum: ' + userDirChecksum);
+        console.log('User Dir Checksum: ' + userDirChecksum.hash);
         console.log('Hub Prefix: ' + HUB_PREFIX);
         console.log('Other Users: ' + users);
         files.checksum = userDirChecksum.hash;
-
         // TODO: initialize this before login to catch updates for all users, and not require login for sync
         chronoDrive = new ChronoDriveSync(msg.user, files, userDirChecksum.hash, HUB_PREFIX, face, keyChain, certificateName, users);
       })
       .catch(error => {
-        return console.error('hashing failed:', error);
+        return console.error(error);
       });
   });
 } catch (e) {
@@ -251,6 +273,7 @@ try {
   console.log(e);
 }
 
+// TODO: Figure out a good way to handle this asynchronously
 function getDirInfo(dirPath, dirEntry = null): FileInfo {
   const entries = fs.readdirSync(dirPath, { encoding: 'utf8', withFileTypes: true });
 
@@ -272,30 +295,40 @@ function getDirInfo(dirPath, dirEntry = null): FileInfo {
       ent = getDirInfo(entPath, entry);
     } else {
       const entStats = fs.statSync(entPath);
+      const data = fs.readFileSync(entPath);
       ent = {
         entry: entry,
         isDirectory: false,
         path: entPath,
         stats: entStats,
         entries: null,
-        fileContents: null,
-        checksum: null,
+        fileContents: data,
+        checksum: checksum(data),
         lastUpdate: entStats.mtime.getTime()
       }
-      fs.readFile(entPath, function (err, data) {
-        if (err) throw err;
-        ent.fileContents = data;
-        ent.checksum = checksum(data);
-        // console.log(data);
-        // console.log(entry.name + ' Checksum: ' + ent.checksum);
-      });
     }
     dir.entries.push(ent);
   }
   return dir;
 }
 
-function writeFile(filepath: string, data: any) {
+export function writeFromFileInfo(fileInfo: FileInfo) {
+  // TODO: Could use checksums here to avoid writing files with same content
+  if (fileInfo.isDirectory) {
+    if (!fs.existsSync(fileInfo.path)) {
+      fs.mkdirSync(fileInfo.path);
+      console.log('Made dir ' + fileInfo.path);
+    }
+    for (const entry of fileInfo.entries) {
+      writeFromFileInfo(entry);
+    }
+  } else {
+    writeFile(fileInfo.path, fileInfo.fileContents);
+    console.log('Wrote ' + fileInfo.path);
+  }
+}
+
+export function writeFile(filepath: string, data: any) {
   fs.writeFile(filepath, data, (err) => {
     if (err) {
       return console.error(err);
@@ -303,7 +336,7 @@ function writeFile(filepath: string, data: any) {
     else {
       console.log('wrote to ' + filepath);
     }
-  });
+  })
 }
 
 function checksum(str: string, algorithm?: string, encoding?: string) {
