@@ -110,6 +110,7 @@ ChronoDriveSync.prototype.onInterest = function
 
   if (content) {
     var str = new Uint8Array(this.FileMessage.encode(content));
+    console.log('Data: ' + interest.getName);
     var co = new Data(interest.getName());
     co.setContent(str);
     this.keyChain.sign(co);
