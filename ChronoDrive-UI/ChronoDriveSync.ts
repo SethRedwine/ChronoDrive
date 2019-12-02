@@ -4,7 +4,35 @@ import { getLastUpdateMs, writeFromFileInfo, DEFAULT_RSA_PRIVATE_KEY_DER, DEFAUL
 // NOTE: this ts file won't work with protobufjs 5.0.3
 // import { FileMessage } from './filebuf';
 const ProtoBuf = require("protobufjs");
-const fileMessageBuilder = ProtoBuf.loadProtoFile('./filebuf.proto');
+// const fileMessageBuilder = ProtoBuf.loadProtoFile('./filebuf.proto');
+
+const fileProto = `
+	syntax = "proto3";
+
+	package com.fileMessage;
+
+	enum FileMessageType {
+		option allow_alias = true;
+		ADD = 0;
+ 		UPDATE = 1;
+  		DELETE = 2;
+  		OTHER = 3;
+	}
+
+	message FileMessage {
+		string user = 1;
+		string filename = 2;
+		string path = 3;
+ 		FileMessageType type = 4;
+		int32 timestamp = 5;
+ 		string data = 6;
+	}
+`;
+
+const fileMessageBuilder = ProtoBuf.protoFromString(fileProto);
+
+console.log('Protobuf: ', ProtoBuf);
+console.log('File Message Builder: ', fileMessageBuilder);
 
 // NOTE: Default ndn prefix
 // const HUB_PREFIX = "ndn/edu/ucla/remap";
@@ -44,7 +72,6 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   var session = (new Date()).getTime();
 
   this.FileMessage = fileMessageBuilder.build('com.fileMessage');
-  // console.log(this.FileMessage, fileMessageBuilder);
 
   // console.log(this.screen_name + ", welcome to chatroom " + this.chatroom + "!");
   this.sync = new ChronoSync2013(this.sendInterest.bind(this), this.initial.bind(this), this.chat_prefix, (new Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName), session, face, keyChain, certificateName, this.sync_lifetime, this.onRegisterFailed.bind(this));

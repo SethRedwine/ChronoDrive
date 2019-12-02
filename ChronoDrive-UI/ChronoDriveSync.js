@@ -5,7 +5,11 @@ var main_1 = require("./main");
 // NOTE: this ts file won't work with protobufjs 5.0.3
 // import { FileMessage } from './filebuf';
 var ProtoBuf = require("protobufjs");
-var fileMessageBuilder = ProtoBuf.loadProtoFile('./filebuf.proto');
+// const fileMessageBuilder = ProtoBuf.loadProtoFile('./filebuf.proto');
+var fileProto = "\n\tsyntax = \"proto3\";\n\n\tpackage com.fileMessage;\n\n\tenum FileMessageType {\n\t\toption allow_alias = true;\n\t\tADD = 0;\n \t\tUPDATE = 1;\n  \t\tDELETE = 2;\n  \t\tOTHER = 3;\n\t}\n\n\tmessage FileMessage {\n\t\tstring user = 1;\n\t\tstring filename = 2;\n\t\tstring path = 3;\n \t\tFileMessageType type = 4;\n\t\tint32 timestamp = 5;\n \t\tstring data = 6;\n\t}\n";
+var fileMessageBuilder = ProtoBuf.protoFromString(fileProto);
+console.log('Protobuf: ', ProtoBuf);
+console.log('File Message Builder: ', fileMessageBuilder);
 // NOTE: Default ndn prefix
 // const HUB_PREFIX = "ndn/edu/ucla/remap";
 var HUB_PREFIX = "ndn/edu/unomaha/adhoc/pi";
@@ -39,7 +43,6 @@ var ChronoDriveSync = function (userName, fileInfo, userDirChecksum, hubPrefix, 
     // QUESTION: What is it good for if we have the last modified for each individual file
     var session = (new Date()).getTime();
     this.FileMessage = fileMessageBuilder.build('com.fileMessage');
-    console.log(this.FileMessage, fileMessageBuilder);
     // console.log(this.screen_name + ", welcome to chatroom " + this.chatroom + "!");
     this.sync = new ndn_js_1.ChronoSync2013(this.sendInterest.bind(this), this.initial.bind(this), this.chat_prefix, (new ndn_js_1.Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName), session, face, keyChain, certificateName, this.sync_lifetime, this.onRegisterFailed.bind(this));
     face.registerPrefix(this.chat_prefix, this.onInterest.bind(this), this.onRegisterFailed.bind(this));
