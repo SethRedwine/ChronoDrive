@@ -43,7 +43,8 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   // QUESTION: What is it good for if we have the last modified for each individual file
   var session = (new Date()).getTime();
 
-  this.FileMessage = fileMessageBuilder.build('FileMessage');
+  this.FileMessage = fileMessageBuilder.build('com.fileMessage');
+  // console.log(this.FileMessage, fileMessageBuilder);
 
   // console.log(this.screen_name + ", welcome to chatroom " + this.chatroom + "!");
   this.sync = new ChronoSync2013(this.sendInterest.bind(this), this.initial.bind(this), this.chat_prefix, (new Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName), session, face, keyChain, certificateName, this.sync_lifetime, this.onRegisterFailed.bind(this));

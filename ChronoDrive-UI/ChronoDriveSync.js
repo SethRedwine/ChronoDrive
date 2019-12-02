@@ -38,7 +38,8 @@ var ChronoDriveSync = function (userName, fileInfo, userDirChecksum, hubPrefix, 
     // NOTE: Session is a timestamp
     // QUESTION: What is it good for if we have the last modified for each individual file
     var session = (new Date()).getTime();
-    this.FileMessage = fileMessageBuilder.build('FileMessage');
+    this.FileMessage = fileMessageBuilder.build('com.fileMessage');
+    console.log(this.FileMessage, fileMessageBuilder);
     // console.log(this.screen_name + ", welcome to chatroom " + this.chatroom + "!");
     this.sync = new ndn_js_1.ChronoSync2013(this.sendInterest.bind(this), this.initial.bind(this), this.chat_prefix, (new ndn_js_1.Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName), session, face, keyChain, certificateName, this.sync_lifetime, this.onRegisterFailed.bind(this));
     face.registerPrefix(this.chat_prefix, this.onInterest.bind(this), this.onRegisterFailed.bind(this));
@@ -53,17 +54,6 @@ exports.ChronoDriveSync = ChronoDriveSync;
  * @param {InterestFilter} filter
  */
 ChronoDriveSync.prototype.onInterest = function (prefix, interest, face, interestFilterId, filter) {
-    // NOTE: ChronoChat code for reference
-    // var seq = parseInt(interest.getName().get(chatPrefixSize + 1).toEscapedString());
-    // for (var i = this.msgcache.length - 1 ; i >= 0; i--) {
-    //   if (this.msgcache[i].seqno == seq) {
-    //     if(this.msgcache[i].msgtype != 'CHAT')
-    //       content = new this.ChatMessage({from:this.screen_name, to:this.chatroom, type:this.msgcache[i].msgtype, timestamp:parseInt(this.msgcache[i].time/1000)});
-    //     else
-    //       content = new this.ChatMessage({from:this.screen_name, to:this.chatroom, type:this.msgcache[i].msgtype, data:this.msgcache[i].msg, timestamp:parseInt(this.msgcache[i].time/1000)});
-    //     break;
-    //   }
-    // }
     // TODO: Figure out how to add checksum to incoming interest
     // TODO: Actually, here we should iterate through the fileInfo/grab the right file, then check the checksum and the timestamp and update if it's older
     // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests are created?
@@ -131,12 +121,12 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
     // others won't be updating their files
     // QUESTION: If note is right, do we need to ensure the state wasn't created by
     // the current device or will that be fine?
-    // if (tempName != this.userName) {
     for (var j = 0; j < syncStates.length; j++) {
         var syncState = syncStates[j];
         var nameComponents = new ndn_js_1.Name(syncState.getDataPrefix());
         var tempName = nameComponents.get(-1).toEscapedString();
         var sessionNo = syncState.getSessionNo();
+        console.log('Received sync state: ' + syncState.getDataPrefix() + ', ' + tempName + ', ' + sessionNo + ', ' + syncState.getSequenceNo());
         if (tempName == this.userName) {
             var index = -1;
             for (var k = 0; k < sendList.length; ++k) {
@@ -157,7 +147,10 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
         }
     }
     for (var i = 0; i < sendList.length; ++i) {
-        // NOTE: Here is where we build interest name
+        // NOTE: Here is where we build interest name for the update data
+        // I think instead of sessionNo we should be using the timestamp from this.fileInfo, since the sessionNo
+        // is locked in at the initialization of the sync object (I think)
+        // This is where we would add the file hash to the interest too
         var uri = sendList[i] + "/" + sessionNoList[i] + "/" + sequenceNoList[i];
         var interest = new ndn_js_1.Interest(new ndn_js_1.Name(uri));
         interest.setInterestLifetimeMilliseconds(this.sync_lifetime);

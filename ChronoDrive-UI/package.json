@@ -1,6 +1,6 @@
 {
   "name": "chrono-drive",
-  "version": "6.2.0",
+  "version": "0.0.1",
   "description": "NDN-based file synchronization application",
   "homepage": "https://github.com/SethRedwine/ChronoDrive",
   "author": {
