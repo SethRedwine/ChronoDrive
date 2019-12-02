@@ -127,7 +127,7 @@ ChronoDriveSync.prototype.onRegisterFailed = function (prefix) { };
 ChronoDriveSync.prototype.initial = function () {
   var timeout = new Interest(new Name("/local/timeout"));
   timeout.setInterestLifetimeMilliseconds(60000);
-
+  console.log('Interest: /local/timeout')
   this.face.expressInterest(timeout, this.dummyOnData, this.heartbeat.bind(this));
 
   // TODO: Implement the equivalent of below, if using the roster as a digest log
@@ -198,6 +198,7 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
     var uri = sendList[i] + "/" + sessionNoList[i] + "/" + sequenceNoList[i];
     var interest = new Interest(new Name(uri));
     interest.setInterestLifetimeMilliseconds(this.sync_lifetime);
+    console.log('Interest: ' + uri);
     this.face.expressInterest(interest, this.onData.bind(this), this.updateTimeout.bind(this));
   }
 };
@@ -249,6 +250,7 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
     }
     var timeout = new Interest(new Name("/local/timeout"));
     timeout.setInterestLifetimeMilliseconds(120000);
+    console.log('Interest: /local/timeout');
     this.face.expressInterest(timeout, this.dummyOnData, this.alive.bind(this, timeout, seqno, name, session, prefix));
 
     if (content.user === this.userName) {
@@ -280,6 +282,7 @@ ChronoDriveSync.prototype.heartbeat = function (interest) {
   var timeout = new Interest(new Name("/local/timeout"));
   timeout.setInterestLifetimeMilliseconds(60000);
 
+  console.log('Interest: /local/timeout');
   //console.log("*** Chat heartbeat expressed interest with name: " + timeout.getName().toUri() + " ***");
   this.face.expressInterest(timeout, this.dummyOnData, this.heartbeat.bind(this));
 };
