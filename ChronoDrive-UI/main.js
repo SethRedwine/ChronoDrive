@@ -126,7 +126,9 @@ exports.DEFAULT_RSA_PRIVATE_KEY_DER = Buffer.from([
 // const host = '/raspberry/pi/test/network/';
 // const face = new Face({ host: host });
 // TODO: specify host later, just using localhost now
-var face = new ndn_js_1.Face();
+var transport = new ndn_js_1.TcpTransport();
+console.log(transport, new ndn_js_1.TcpTransport.ConnectionInfo('127.0.0.1', 6363));
+var face = new ndn_js_1.Face(transport, new ndn_js_1.TcpTransport.ConnectionInfo('127.0.0.1', 6363));
 var identityStorage = new ndn_js_1.MemoryIdentityStorage();
 var privateKeyStorage = new ndn_js_1.MemoryPrivateKeyStorage();
 var keyChain = new ndn_js_1.KeyChain(new ndn_js_1.IdentityManager(identityStorage, privateKeyStorage), new ndn_js_1.SelfVerifyPolicyManager(identityStorage));

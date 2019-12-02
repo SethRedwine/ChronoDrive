@@ -2,7 +2,7 @@ import { app, BrowserWindow, screen } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
 import { FileInfo } from './src/app/types/DirectoryInfo';
-import { Face, MemoryIdentityStorage, MemoryPrivateKeyStorage, KeyChain, IdentityManager, SelfVerifyPolicyManager, Name, KeyType, Blob } from 'ndn-js';
+import { Face, MemoryIdentityStorage, MemoryPrivateKeyStorage, KeyChain, IdentityManager, SelfVerifyPolicyManager, Name, KeyType, Blob, TcpTransport } from 'ndn-js';
 import { ChronoDriveSync, HUB_PREFIX } from './ChronoDriveSync';
 const { ipcMain } = require('electron');
 const fs = require('fs');
@@ -128,7 +128,9 @@ export const DEFAULT_RSA_PRIVATE_KEY_DER = Buffer.from([
 // const host = '/raspberry/pi/test/network/';
 // const face = new Face({ host: host });
 // TODO: specify host later, just using localhost now
-const face = new Face();
+const transport = new TcpTransport();
+console.log(transport, new TcpTransport.ConnectionInfo('127.0.0.1', 6363));
+const face = new Face(transport, new TcpTransport.ConnectionInfo('127.0.0.1', 6363));
 const identityStorage = new MemoryIdentityStorage();
 const privateKeyStorage = new MemoryPrivateKeyStorage();
 const keyChain = new KeyChain(new IdentityManager(identityStorage, privateKeyStorage), new SelfVerifyPolicyManager(identityStorage));
