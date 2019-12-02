@@ -7,9 +7,9 @@ var main_1 = require("./main");
 var ProtoBuf = require("protobufjs");
 var fileMessageBuilder = ProtoBuf.loadProtoFile('./filebuf.proto');
 // NOTE: Default ndn prefix
-var HUB_PREFIX = "ndn/edu/ucla/remap";
+// const HUB_PREFIX = "ndn/edu/ucla/remap";
+var HUB_PREFIX = "ndn/edu/unomaha/adhoc/pi";
 exports.HUB_PREFIX = HUB_PREFIX;
-// const HUB_PREFIX = "ndn/edu/unomaha/adhoc/pi";
 var ChronoDriveSync = function (userName, fileInfo, userDirChecksum, hubPrefix, face, keyChain, certificateName, roster) {
     this.userName = userName;
     this.userDirChecksum = userDirChecksum;

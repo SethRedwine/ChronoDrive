@@ -14,8 +14,13 @@ var hashElement = require('folder-hash').hashElement;
 var win, serve, chronoDrive;
 var args = process.argv.slice(1);
 serve = args.some(function (val) { return val === '--serve'; });
-var APP_DATA_DIR = './AppData';
+var APP_DATA_DIR = electron_1.app.getPath('userData');
 var USER_DATA_DIR = APP_DATA_DIR;
+console.log('App data dir: ' + APP_DATA_DIR);
+// Ensure the app data folder exists
+if (!fs.existsSync(APP_DATA_DIR)) {
+    fs.mkdirSync(APP_DATA_DIR);
+}
 // Encryption Keys - probably a way better way to do this
 exports.DEFAULT_RSA_PUBLIC_KEY_DER = Buffer.from([
     0x30, 0x82, 0x01, 0x22, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
@@ -228,7 +233,7 @@ try {
                         chronoDrive.sendFiles(files);
                     })
                         .catch(function (error) {
-                        return console.error('hashing failed:', error);
+                        return console.error(error);
                     });
                     fileWatcherDebounce = false;
                 }, 500);
@@ -237,7 +242,7 @@ try {
         hashElement(USER_DATA_DIR)
             .then(function (userDirChecksum) {
             // Start the sync
-            console.log('ChronoDriveSync -');
+            console.log('Initializing ChronoDriveSync...');
             console.log('User: ' + msg.user);
             console.log('Last File Update: ' + new Date(lastUpdated));
             console.log('User Dir Checksum: ' + userDirChecksum.hash);
@@ -248,7 +253,7 @@ try {
             chronoDrive = new ChronoDriveSync_1.ChronoDriveSync(msg.user, files, userDirChecksum.hash, ChronoDriveSync_1.HUB_PREFIX, face, keyChain, certificateName, users);
         })
             .catch(function (error) {
-            return console.error('hashing failed:', error);
+            return console.error(error);
         });
     });
 }

@@ -13,8 +13,14 @@ const { hashElement } = require('folder-hash');
 let win, serve, chronoDrive;
 const args = process.argv.slice(1);
 serve = args.some(val => val === '--serve');
-const APP_DATA_DIR = './AppData';
+const APP_DATA_DIR = app.getPath('userData');
 let USER_DATA_DIR = APP_DATA_DIR;
+
+console.log('App data dir: ' + APP_DATA_DIR);
+// Ensure the app data folder exists
+if (!fs.existsSync(APP_DATA_DIR)) {
+  fs.mkdirSync(APP_DATA_DIR);
+}
 
 // Encryption Keys - probably a way better way to do this
 export const DEFAULT_RSA_PUBLIC_KEY_DER = Buffer.from([
