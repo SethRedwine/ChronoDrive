@@ -7,8 +7,8 @@ const ProtoBuf = require("protobufjs");
 const fileMessageBuilder = ProtoBuf.loadProtoFile('./filebuf.proto');
 
 // NOTE: Default ndn prefix
-const HUB_PREFIX = "ndn/edu/ucla/remap";
-// const HUB_PREFIX = "ndn/edu/unomaha/adhoc/pi";
+// const HUB_PREFIX = "ndn/edu/ucla/remap";
+const HUB_PREFIX = "ndn/edu/unomaha/adhoc/pi";
 
 const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirChecksum: string, hubPrefix: string, face, keyChain, certificateName, roster: string[]) {
   this.userName = userName;
