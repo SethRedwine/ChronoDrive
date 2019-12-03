@@ -1,10 +1,7 @@
-import { Name, Face, ChronoSync2013, Interest, Data, Blob, UnixTransport, SafeBag, KeyChain } from 'ndn-js';
+import { Name, ChronoSync2013, Interest, Data } from 'ndn-js';
 import { FileInfo } from './src/app/types/DirectoryInfo';
-import { getLastUpdateMs, writeFromFileInfo, DEFAULT_RSA_PRIVATE_KEY_DER, DEFAULT_RSA_PUBLIC_KEY_DER } from './main';
-// NOTE: this ts file won't work with protobufjs 5.0.3
-// import { FileMessage } from './filebuf';
+import { getLastUpdateMs, writeFromFileInfo } from './main';
 const ProtoBuf = require("protobufjs");
-// const fileMessageBuilder = ProtoBuf.loadProtoFile('./filebuf.proto');
 
 const fileProto = `
 	syntax = "proto3";
@@ -31,17 +28,14 @@ const fileProto = `
 
 const fileMessageBuilder = ProtoBuf.protoFromString(fileProto);
 
-console.log('Protobuf: ', ProtoBuf);
-console.log('File Message Builder: ', fileMessageBuilder);
+// console.log('Protobuf: ', ProtoBuf);
+// console.log('File Message Builder: ', fileMessageBuilder);
 
-// NOTE: Default ndn prefix
-// const HUB_PREFIX = "ndn/edu/ucla/remap";
 const HUB_PREFIX = "ndn/edu/unomaha/adhoc/pi";
 
 const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirChecksum: string, hubPrefix: string, face, keyChain, certificateName, roster: string[]) {
   this.userName = userName;
   this.userDirChecksum = userDirChecksum;
-  this.maxmsgcachelength = 100;
   this.isRecoverySyncState = true;
   this.sync_lifetime = 5000.0;
   this.face = face;
@@ -130,13 +124,6 @@ ChronoDriveSync.prototype.initial = function () {
   timeout.setInterestLifetimeMilliseconds(60000);
   console.log('Interest: /local/timeout')
   this.face.expressInterest(timeout, this.dummyOnData, this.heartbeat.bind(this));
-
-  // TODO: Implement the equivalent of below, if using the roster as a digest log
-  // if (this.roster.indexOf(this.usrname) == -1) {
-  //   this.roster.push(this.usrname);
-  //   //console.log("*** Local member " + this.usrname + " joins. ***");
-  //   this.messageCacheAppend('JOIN', 'xxx');
-  // }
 };
 
 /**
@@ -170,6 +157,7 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
     var nameComponents = new Name(syncState.getDataPrefix());
     var tempName = nameComponents.get(-1).toEscapedString();
     var sessionNo = syncState.getSessionNo();
+
     console.log('Received sync state: ' + syncState.getDataPrefix() + ', ' + tempName + ', ' + sessionNo + ', ' + syncState.getSequenceNo());
     if (tempName == this.userName) {
       var index = -1;
@@ -264,12 +252,14 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
 };
 
 /**
- * No chat data coming back.
+ * No file data coming back.
  * @param {Interest}
  */
-ChronoDriveSync.prototype.updateTimeout = function (interest) { };
+ChronoDriveSync.prototype.updateTimeout = function (interest) {
+  console.log("Timeout waiting for file data");
+};
 
-/**
+/**˝
  *
  * @param {Interest}
  */
@@ -283,8 +273,7 @@ ChronoDriveSync.prototype.heartbeat = function (interest) {
   var timeout = new Interest(new Name("/local/timeout"));
   timeout.setInterestLifetimeMilliseconds(60000);
 
-  console.log('Interest: /local/timeout');
-  //console.log("*** Chat heartbeat expressed interest with name: " + timeout.getName().toUri() + " ***");
+  console.log('Interest: ' + timeout.getName().toUri() );
   this.face.expressInterest(timeout, this.dummyOnData, this.heartbeat.bind(this));
 };
 
@@ -324,29 +313,19 @@ ChronoDriveSync.prototype.alive = function (interest, temp_seq, name, session, p
 ChronoDriveSync.prototype.sendFiles = function (fileInfo: FileInfo) {
   if (fileInfo && fileInfo.path) {
     this.sync.publishNextSequenceNo();
+    console.log('Publishing next sequence number...');
+    console.log(this.sync.getSequenceNo());
     // TODO: Handle different file message types
     this.fileInfoUpdate("UPDATE", fileInfo);
   }
 }
 
 /**
- * Append a new CachedMessage to msgcache, using given messageType and message,
- * the sequence number from this.sync.getSequenceNo() and the current time.
- * Also remove elements from the front of the cache as needed to keep the size to
- * this.maxmsgcachelength.
+ * Update the file information sync has
  */
-// ChronoDriveSync.prototype.messageCacheAppend = function (messageType, message) {
 ChronoDriveSync.prototype.fileInfoUpdate = function (fileMessageType: string, fileInfo: FileInfo) {
   // TODO: retool to store file states with checksums
   // TODO: Handle different file message types
-
-  // chronochat code: adding to cache and removing old entries
-  // var d = new Date();
-  // var t = d.getTime();
-  // this.msgcache.push(new ChronoDriveSync.CachedMessage(this.sync.usrseq, messageType, message, t));
-  // while (this.msgcache.length > this.maxmsgcachelength) {
-  //   this.msgcache.shift();
-  // }
 
   // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests, are created?
   // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
@@ -363,97 +342,5 @@ ChronoDriveSync.prototype.getRandomString = function () {
   }
   return result;
 };
-
-// Embedded class CachedMessage; defining class with its constructor
-// QUESTION: Should we keep historical states for files? it seems
-// like this approach would be very data intensive unless we did it with 
-// some sort of diffs
-// NOTE: until we start working down that path, this will pretty much be dead code
-// ChronoDriveSync.CachedMessage = function (seqno, msgtype, msg, time) {
-//   // TODO: define file states for cache and update get methods
-//   // NOTE: Can call/create this on each file read
-
-//   // NOTE: could store path and file data here to use to send updates for individual files
-//   this.seqno = seqno;
-//   this.msgtype = msgtype;
-//   this.msg = msg;
-//   // NOTE: time should probably be last modified time for each file 
-//   this.time = time;
-// };
-
-// ChronoDriveSync.CachedMessage.prototype.getSequenceNo = function () {
-//   return this.seqno;
-// };
-
-// ChronoDriveSync.CachedMessage.prototype.getMessageType = function () {
-//   return this.msgtype;
-// };
-
-// ChronoDriveSync.CachedMessage.prototype.getMessage = function () {
-//   return this.msg;
-// };
-
-// /**
-//  * @return MillisecondsSince1970
-//  */
-// ChronoDriveSync.CachedMessage.prototype.getTime = function () {
-//   return this.time;
-// };
-
-// function getRandomNameString() {
-//   var seed = 'qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM';
-//   var result = '';
-//   for (var i = 0; i < 3; i++) {
-//     var pos = Math.floor(Math.random() * seed.length);
-//     result += seed[pos];
-//   }
-//   return result;
-// };
-
-// initiateChat() also sends random chat messages so that we don't need input from node JS
-// QUESTION: Do we need this?
-// function initiateChat() {
-//   // Silence the warning from Interest wire encode.
-//   Interest.setDefaultCanBePrefix(true);
-
-//   // TODO: Figure out if this is necessary; if we only initialize sync after login, we probably don't need it
-//   // and if we do it before, I think we should be able to pull the names from ./AppData
-//   var screenName = getRandomNameString();
-
-
-//   // NOTE: don't need next two lines anymore, keeping for context now
-//   // chatroom is the name inputted by the user
-//   // var chatroom = "ndnchat";
-
-//   var face = new Face(new UnixTransport());
-
-//   // Set up the KeyChain.
-//   var keyChain = new KeyChain("pib-memory:", "tpm-memory:");
-//   // This puts the public key in the pibImpl used by the SelfVerifyPolicyManager.
-//   keyChain.importSafeBag(new SafeBag
-//     (new Name("/testname/KEY/123"),
-//       new Blob(DEFAULT_RSA_PRIVATE_KEY_DER, false),
-//       new Blob(DEFAULT_RSA_PUBLIC_KEY_DER, false)));
-
-//   face.setCommandSigningInfo(keyChain, keyChain.getDefaultCertificateName());
-
-//   // TODO: Set some okay defaults here
-//   var chronoDriveSync = new ChronoDriveSync
-//     (screenName, null, '', HUB_PREFIX, face, keyChain,
-//       keyChain.getDefaultCertificateName(), []);
-
-//   // Send random test chat message at a fixed interval
-//   var num = 0;
-//   setInterval(
-//     function () {
-//       var chatMsg = screenName + num;
-//       chronoDriveSync.sendMessage(chatMsg);
-//       console.log(screenName + ": " + chatMsg);
-//       num++;
-//     }, 2000);
-// }
-
-// TODO: Will probably need to call this in the main.ts
-// initiateChat();
 
 export { ChronoDriveSync, HUB_PREFIX };

@@ -43,7 +43,6 @@ var ChronoDriveSync = function (userName, fileInfo, userDirChecksum, hubPrefix, 
     // QUESTION: What is it good for if we have the last modified for each individual file
     var session = (new Date()).getTime();
     this.FileMessage = fileMessageBuilder.build('com.fileMessage');
-    // console.log(this.FileMessage, fileMessageBuilder);
     // console.log(this.screen_name + ", welcome to chatroom " + this.chatroom + "!");
     this.sync = new ndn_js_1.ChronoSync2013(this.sendInterest.bind(this), this.initial.bind(this), this.chat_prefix, (new ndn_js_1.Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName), session, face, keyChain, certificateName, this.sync_lifetime, this.onRegisterFailed.bind(this));
     face.registerPrefix(this.chat_prefix, this.onInterest.bind(this), this.onRegisterFailed.bind(this));
@@ -79,6 +78,7 @@ ChronoDriveSync.prototype.onInterest = function (prefix, interest, face, interes
     }
     if (content) {
         var str = new Uint8Array(this.FileMessage.encode(content));
+        console.log('Data: ' + interest.getName);
         var co = new ndn_js_1.Data(interest.getName());
         co.setContent(str);
         this.keyChain.sign(co);
@@ -94,6 +94,7 @@ ChronoDriveSync.prototype.onRegisterFailed = function (prefix) { };
 ChronoDriveSync.prototype.initial = function () {
     var timeout = new ndn_js_1.Interest(new ndn_js_1.Name("/local/timeout"));
     timeout.setInterestLifetimeMilliseconds(60000);
+    console.log('Interest: /local/timeout');
     this.face.expressInterest(timeout, this.dummyOnData, this.heartbeat.bind(this));
     // TODO: Implement the equivalent of below, if using the roster as a digest log
     // if (this.roster.indexOf(this.usrname) == -1) {
@@ -158,6 +159,7 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
         var uri = sendList[i] + "/" + sessionNoList[i] + "/" + sequenceNoList[i];
         var interest = new ndn_js_1.Interest(new ndn_js_1.Name(uri));
         interest.setInterestLifetimeMilliseconds(this.sync_lifetime);
+        console.log('Interest: ' + uri);
         this.face.expressInterest(interest, this.onData.bind(this), this.updateTimeout.bind(this));
     }
 };
@@ -205,6 +207,7 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
         }
         var timeout = new ndn_js_1.Interest(new ndn_js_1.Name("/local/timeout"));
         timeout.setInterestLifetimeMilliseconds(120000);
+        console.log('Interest: /local/timeout');
         this.face.expressInterest(timeout, this.dummyOnData, this.alive.bind(this, timeout, seqno, name, session, prefix));
         if (content.user === this.userName) {
             main_1.writeFromFileInfo(JSON.parse(content.data));
@@ -232,6 +235,7 @@ ChronoDriveSync.prototype.heartbeat = function (interest) {
     // Making a timeout interest for heartbeat...
     var timeout = new ndn_js_1.Interest(new ndn_js_1.Name("/local/timeout"));
     timeout.setInterestLifetimeMilliseconds(60000);
+    console.log('Interest: /local/timeout');
     //console.log("*** Chat heartbeat expressed interest with name: " + timeout.getName().toUri() + " ***");
     this.face.expressInterest(timeout, this.dummyOnData, this.heartbeat.bind(this));
 };
