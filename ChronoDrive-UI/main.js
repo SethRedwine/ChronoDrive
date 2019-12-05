@@ -356,7 +356,7 @@ exports.getLastUpdateMs = getLastUpdateMs;
 function testBroadcast() {
     // do whatever you like here
     console.log('testBroadcast...');
-    face.expressInterest(new (new ndn_js_1.Name(ChronoDriveSync_1.HUB_PREFIX)).append(this.userName), function () { console.log('!!recieved testBroadcast response!!'); }, function () { console.log('Never got a response :('); });
+    face.expressInterest((new ndn_js_1.Name(ChronoDriveSync_1.HUB_PREFIX)).append('sredwine'), function () { console.log('!!recieved testBroadcast response!!'); }, function () { console.log('Never got a response :('); });
     setTimeout(testBroadcast, 5000);
 }
 testBroadcast();
