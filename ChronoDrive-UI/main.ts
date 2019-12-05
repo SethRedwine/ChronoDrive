@@ -264,6 +264,14 @@ try {
         files.checksum = userDirChecksum.hash;
         // TODO: initialize this before login to catch updates for all users, and not require login for sync
         chronoDrive = new ChronoDriveSync(msg.user, files, userDirChecksum.hash, HUB_PREFIX, face, keyChain, certificateName, users);
+
+        function testBroadcast() {
+          // do whatever you like here
+          console.log('testBroadcast...');
+          chronoDrive.sendFiles()
+          setTimeout(testBroadcast, 5000);
+        }
+        testBroadcast();
       })
       .catch(error => {
         return console.error(error);
@@ -368,10 +376,10 @@ export function getLastUpdateMs(files: FileInfo): number {
   return lastUpdate;
 }
 
-function testBroadcast() {
-  // do whatever you like here
-  console.log('testBroadcast...');
-  chronoDrive.sendFiles()
-  setTimeout(testBroadcast, 5000);
-}
-testBroadcast();
+// function testBroadcast() {
+//   // do whatever you like here
+//   console.log('testBroadcast...');
+//   chronoDrive.sendFiles()
+//   setTimeout(testBroadcast, 5000);
+// }
+// testBroadcast();
