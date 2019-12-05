@@ -13,7 +13,7 @@ const { hashElement } = require('folder-hash');
 let win, serve, chronoDrive;
 const args = process.argv.slice(1);
 serve = args.some(val => val === '--serve');
-const APP_DATA_DIR = app.getPath('userData');
+const APP_DATA_DIR = path.join(app.getPath('userData'), 'sync');
 // TODO: move user dirs one level deeper
 let USER_DATA_DIR = APP_DATA_DIR;
 
