@@ -18,7 +18,7 @@ var ChronoDriveSync = function (userName, fileInfo, userDirChecksum, hubPrefix, 
     this.keyChain = keyChain;
     this.certificateName = certificateName;
     // TODO: rename prefix - we're filing, not chatting
-    this.chat_prefix = (new ndn_js_1.Name(hubPrefix)).append(this.userName).append(this.getRandomString());
+    this.chat_prefix = (new ndn_js_1.Name(hubPrefix)).append(this.userName); //.append(this.getRandomString());
     // QUESTION: Do we continue to use this roster? this will make it possible to keep stored users' directories updated without relying on 
     // a login but will mean we'll need to initialize the sync before a login
     this.roster = roster;

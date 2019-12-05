@@ -247,13 +247,6 @@ try {
             files.checksum = userDirChecksum.hash;
             // TODO: initialize this before login to catch updates for all users, and not require login for sync
             chronoDrive = new ChronoDriveSync_1.ChronoDriveSync(msg.user, files, userDirChecksum.hash, ChronoDriveSync_1.HUB_PREFIX, face, keyChain, certificateName, users_1);
-            function broadcast() {
-                // do whatever you like here
-                console.log('publishNextSequenceNo test');
-                chronoDrive.sync.publishNextSequenceNo();
-                setTimeout(broadcast, 5000);
-            }
-            broadcast();
         })
             .catch(function (error) {
             return console.error(error);
@@ -360,4 +353,11 @@ function getLastUpdateMs(files) {
     return lastUpdate;
 }
 exports.getLastUpdateMs = getLastUpdateMs;
+function testBroadcast() {
+    // do whatever you like here
+    console.log('testBroadcast...');
+    face.expressInterest(new (new ndn_js_1.Name(ChronoDriveSync_1.HUB_PREFIX)).append(this.userName), function () { console.log('!!recieved testBroadcast response!!'); }, function () { console.log('Never got a response :('); });
+    setTimeout(testBroadcast, 5000);
+}
+testBroadcast();
 //# sourceMappingURL=main.js.map
