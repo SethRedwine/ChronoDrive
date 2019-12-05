@@ -43,7 +43,8 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   this.certificateName = certificateName;
 
   // TODO: rename prefix - we're filing, not chatting
-  this.chat_prefix = (new Name(hubPrefix)).append(this.userName); //.append(this.getRandomString());
+  this.sync_prefix = (new Name(hubPrefix)).append(this.userName); //.append(this.getRandomString());
+  console.log('Prefix: ', this.sync_prefix.toUri());
 
   // QUESTION: Do we continue to use this roster? this will make it possible to keep stored users' directories updated without relying on 
   // a login but will mean we'll need to initialize the sync before a login
@@ -59,7 +60,7 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   // this.msgcache = [];
   this.fileInfo = fileInfo;
 
-  //console.log("The local chat prefix " + this.chat_prefix.toUri() + " ***");
+  //console.log("The local chat prefix " + this.sync_prefix.toUri() + " ***");
 
   // NOTE: Session is a timestamp
   // QUESTION: What is it good for if we have the last modified for each individual file
@@ -68,8 +69,8 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   this.FileMessage = fileMessageBuilder.build('com.fileMessage');
 
   // console.log(this.screen_name + ", welcome to chatroom " + this.chatroom + "!");
-  this.sync = new ChronoSync2013(this.sendInterest.bind(this), this.initial.bind(this), this.chat_prefix, (new Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName), session, face, keyChain, certificateName, this.sync_lifetime, this.onRegisterFailed.bind(this));
-  face.registerPrefix(this.chat_prefix, this.onInterest.bind(this), this.onRegisterFailed.bind(this));
+  this.sync = new ChronoSync2013(this.sendInterest.bind(this), this.initial.bind(this), this.sync_prefix, (new Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName), session, face, keyChain, certificateName, this.sync_lifetime, this.onRegisterFailed.bind(this));
+  face.registerPrefix(this.sync_prefix, this.onInterest.bind(this), this.onRegisterFailed.bind(this));
 };
 
 /**
@@ -87,10 +88,13 @@ ChronoDriveSync.prototype.onInterest = function
   // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests are created?
   // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
   let content = null;
-  // chat_prefix should really be saved as a name, not a URI string.
+  // sync_prefix should really be saved as a name, not a URI string.
   console.log('onInterest interest: ', interest);
-  var chatPrefixSize = new Name(this.chat_prefix).size();
-  const interestTimestamp = parseInt(interest.getName().get(chatPrefixSize + 1).toEscapedString());
+  console.log('interest name: ', interest.getName().toUri());
+  console.log('interest size: ', interest.getName().size());
+  var syncPrefixSize = new Name(this.sync_prefix).size();
+  console.log('syncPrefixSize: ', syncPrefixSize);
+  const interestTimestamp = parseInt(interest.getName().get(syncPrefixSize).toEscapedString());
   const lastLocalUpdate = getLastUpdateMs(this.fileInfo);
   if (lastLocalUpdate > interestTimestamp) {
     content = {
@@ -214,7 +218,7 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
     var t = (new Date(content.timestamp)).toLocaleTimeString();
     var name = content.user;
 
-    // chat_prefix should be saved as a name, not a URI string.
+    // sync_prefix should be saved as a name, not a URI string.
     var prefix = co.getName().getPrefix(-2).toUri();
 
     // NOTE: here it's grabbing the last two components of the data Name - need to store timestamp and checksum here probably

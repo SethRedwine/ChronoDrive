@@ -11,6 +11,7 @@ const watch = require('node-watch');
 const crypto = require('crypto');
 const { hashElement } = require('folder-hash');
 let win, serve, chronoDrive;
+let files: FileInfo;
 const args = process.argv.slice(1);
 serve = args.some(val => val === '--serve');
 const APP_DATA_DIR = path.join(app.getPath('userData'), 'sync');
@@ -119,7 +120,7 @@ export const DEFAULT_RSA_PRIVATE_KEY_DER = Buffer.from([
 
 // ChronoSync Stuff
 const transport = new TcpTransport();
-console.log(transport, new TcpTransport.ConnectionInfo('127.0.0.1', 6363));
+// console.log(transport, new TcpTransport.ConnectionInfo('127.0.0.1', 6363));
 const face = new Face(transport, new TcpTransport.ConnectionInfo('127.0.0.1', 6363));
 const identityStorage = new MemoryIdentityStorage();
 const privateKeyStorage = new MemoryPrivateKeyStorage();
@@ -221,7 +222,7 @@ try {
     if (!fs.existsSync(USER_DATA_DIR)) {
       fs.mkdirSync(USER_DATA_DIR);
     }
-    const files: FileInfo = getDirInfo(USER_DATA_DIR);
+    files = getDirInfo(USER_DATA_DIR);
     const lastUpdated = getLastUpdateMs(files);
     evt.reply('directory-update', files);
 
@@ -370,7 +371,7 @@ export function getLastUpdateMs(files: FileInfo): number {
 function testBroadcast() {
   // do whatever you like here
   console.log('testBroadcast...');
-  face.expressInterest((new Name(HUB_PREFIX)).append('sredwine'), () => {console.log('!!recieved testBroadcast response!!')}, () => {console.log('Never got a response :(')});
+  chronoDrive.sendFiles()
   setTimeout(testBroadcast, 5000);
 }
 testBroadcast();

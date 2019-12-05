@@ -118,7 +118,7 @@ exports.DEFAULT_RSA_PRIVATE_KEY_DER = Buffer.from([
 ]);
 // ChronoSync Stuff
 var transport = new ndn_js_1.TcpTransport();
-console.log(transport, new ndn_js_1.TcpTransport.ConnectionInfo('127.0.0.1', 6363));
+// console.log(transport, new TcpTransport.ConnectionInfo('127.0.0.1', 6363));
 var face = new ndn_js_1.Face(transport, new ndn_js_1.TcpTransport.ConnectionInfo('127.0.0.1', 6363));
 var identityStorage = new ndn_js_1.MemoryIdentityStorage();
 var privateKeyStorage = new ndn_js_1.MemoryPrivateKeyStorage();
@@ -353,11 +353,11 @@ function getLastUpdateMs(files) {
     return lastUpdate;
 }
 exports.getLastUpdateMs = getLastUpdateMs;
-function testBroadcast() {
-    // do whatever you like here
-    console.log('testBroadcast...');
-    face.expressInterest((new ndn_js_1.Name(ChronoDriveSync_1.HUB_PREFIX)).append('sredwine'), function () { console.log('!!recieved testBroadcast response!!'); }, function () { console.log('Never got a response :('); });
-    setTimeout(testBroadcast, 5000);
-}
-testBroadcast();
+// function testBroadcast() {
+//   // do whatever you like here
+//   console.log('testBroadcast...');
+//   face.expressInterest((new Name(HUB_PREFIX)).append('sredwine'), () => {console.log('!!recieved testBroadcast response!!')}, () => {console.log('Never got a response :(')});
+//   setTimeout(testBroadcast, 5000);
+// }
+// testBroadcast();
 //# sourceMappingURL=main.js.map
