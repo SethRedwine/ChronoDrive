@@ -277,7 +277,7 @@ try {
           //     console.log(data);
           //   },
           //   () => { console.log('recieved update somehow') });
-          setTimeout(testBroadcast, 5000);
+          setTimeout(testBroadcast, 15000);
         }
         testBroadcast();
       })
