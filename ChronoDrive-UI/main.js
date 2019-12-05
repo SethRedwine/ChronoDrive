@@ -248,13 +248,18 @@ try {
             files.checksum = userDirChecksum.hash;
             // TODO: initialize this before login to catch updates for all users, and not require login for sync
             chronoDrive = new ChronoDriveSync_1.ChronoDriveSync(msg.user, files, userDirChecksum.hash, ChronoDriveSync_1.HUB_PREFIX, face, keyChain, certificateName, users_1);
-            // function testBroadcast() {
-            //   // do whatever you like here
-            //   console.log('testBroadcast...');
-            //   chronoDrive.sendFiles()
-            //   setTimeout(testBroadcast, 5000);
-            // }
-            // testBroadcast();
+            function testBroadcast() {
+                // do whatever you like here
+                console.log('testBroadcast...');
+                // chronoDrive.sendFiles(files);
+                face.expressInterest((new ndn_js_1.Name("/ndn/broadcast/ChronoDrive-0.1")).append('sredwine'), function (interest, data) {
+                    console.log('recieved update somehow');
+                    console.log(interest.getName().toUri());
+                    console.log(data);
+                }, function () { console.log('recieved update somehow'); });
+                setTimeout(testBroadcast, 5000);
+            }
+            testBroadcast();
         })
             .catch(function (error) {
             return console.error(error);

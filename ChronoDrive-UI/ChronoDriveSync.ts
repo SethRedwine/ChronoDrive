@@ -43,7 +43,7 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   this.certificateName = certificateName;
 
   // TODO: rename prefix - we're filing, not chatting
-  this.sync_prefix = (new Name(hubPrefix)).append(this.userName); //.append(this.getRandomString());
+  this.sync_prefix = (new Name(hubPrefix)).append(this.userName).append(this.getRandomString());
   console.log('Prefix: ', this.sync_prefix.toUri());
 
   // QUESTION: Do we continue to use this roster? this will make it possible to keep stored users' directories updated without relying on 
@@ -69,7 +69,18 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   this.FileMessage = fileMessageBuilder.build('com.fileMessage');
 
   // console.log(this.screen_name + ", welcome to chatroom " + this.chatroom + "!");
-  this.sync = new ChronoSync2013(this.sendInterest.bind(this), this.initial.bind(this), this.sync_prefix, (new Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName), session, face, keyChain, certificateName, this.sync_lifetime, this.onRegisterFailed.bind(this));
+  this.sync = new ChronoSync2013(
+    this.sendInterest.bind(this),
+    this.initial.bind(this),
+    this.sync_prefix,
+    (new Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName),
+    session,
+    face,
+    keyChain,
+    certificateName,
+    this.sync_lifetime,
+    this.onRegisterFailed.bind(this)
+  );
   face.registerPrefix(this.sync_prefix, this.onInterest.bind(this), this.onRegisterFailed.bind(this));
 };
 
@@ -284,7 +295,7 @@ ChronoDriveSync.prototype.heartbeat = function (interest) {
   var timeout = new Interest(new Name("/local/timeout"));
   timeout.setInterestLifetimeMilliseconds(60000);
 
-  console.log('Interest: ' + timeout.getName().toUri() );
+  console.log('Interest: ' + timeout.getName().toUri());
   this.face.expressInterest(timeout, this.dummyOnData, this.heartbeat.bind(this));
 };
 
@@ -325,8 +336,7 @@ ChronoDriveSync.prototype.alive = function (interest, temp_seq, name, session, p
 ChronoDriveSync.prototype.sendFiles = function (fileInfo: FileInfo) {
   if (fileInfo && fileInfo.path) {
     this.sync.publishNextSequenceNo();
-    console.log('Publishing next sequence number...');
-    console.log(this.sync.getSequenceNo());
+    console.log('Publishing next sequence number: ' + this.sync.getSequenceNo());
     // TODO: Handle different file message types
     this.fileInfoUpdate("UPDATE", fileInfo);
   }

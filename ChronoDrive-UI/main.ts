@@ -269,6 +269,14 @@ try {
           // do whatever you like here
           console.log('testBroadcast...');
           chronoDrive.sendFiles(files);
+          // face.expressInterest((new Name(
+          //   "/ndn/broadcast/ChronoDrive-0.1")).append('sredwine'),
+          //   (interest, data) => {
+          //     console.log('recieved update somehow');
+          //     console.log(interest.getName().toUri());
+          //     console.log(data);
+          //   },
+          //   () => { console.log('recieved update somehow') });
           setTimeout(testBroadcast, 5000);
         }
         testBroadcast();
@@ -375,11 +383,3 @@ export function getLastUpdateMs(files: FileInfo): number {
   }
   return lastUpdate;
 }
-
-// function testBroadcast() {
-//   // do whatever you like here
-//   console.log('testBroadcast...');
-//   chronoDrive.sendFiles()
-//   setTimeout(testBroadcast, 5000);
-// }
-// testBroadcast();
