@@ -43,7 +43,7 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   this.certificateName = certificateName;
 
   // TODO: rename prefix - we're filing, not chatting
-  this.sync_prefix = (new Name(hubPrefix)).append(this.userName).append(this.getRandomString());
+  this.sync_prefix = (new Name(hubPrefix)).append(this.userName); //.append(this.getRandomString());
   console.log('Prefix: ', this.sync_prefix.toUri());
 
   // QUESTION: Do we continue to use this roster? this will make it possible to keep stored users' directories updated without relying on 
