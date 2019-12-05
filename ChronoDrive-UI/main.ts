@@ -130,13 +130,6 @@ identityStorage.addKey(keyName, KeyType.RSA, new Blob(DEFAULT_RSA_PUBLIC_KEY_DER
 privateKeyStorage.setKeyPairForKeyName(keyName, KeyType.RSA, DEFAULT_RSA_PUBLIC_KEY_DER, DEFAULT_RSA_PRIVATE_KEY_DER);
 face.setCommandSigningInfo(keyChain, certificateName);
 
-let users = getUsers();
-console.log('Users: ' + users);
-watch(`${APP_DATA_DIR}`, { recursive: false }, (event, filename) => {
-  users = getUsers();
-  console.log('Users: ' + users);
-});
-
 let fileWatcherDebounce = false;
 
 function createWindow() {
@@ -190,6 +183,14 @@ try {
     fs.mkdirSync(APP_DATA_DIR);
   }
 
+  // Get list of users that have logged in on device
+  let users = getUsers();
+  console.log('Users: ' + users);
+  watch(`${APP_DATA_DIR}`, { recursive: false }, (event, filename) => {
+    users = getUsers();
+    console.log('Users: ' + users);
+  });
+  
   // This method will be called when Electron has finished
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.

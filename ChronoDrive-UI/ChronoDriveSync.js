@@ -13,7 +13,7 @@ var ChronoDriveSync = function (userName, fileInfo, userDirChecksum, hubPrefix, 
     this.userName = userName;
     this.userDirChecksum = userDirChecksum;
     this.isRecoverySyncState = true;
-    this.sync_lifetime = 5000.0;
+    this.sync_lifetime = 15000.0;
     this.face = face;
     this.keyChain = keyChain;
     this.certificateName = certificateName;
@@ -187,6 +187,7 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
                 l++;
             }
         }
+        console.log('onData - Updated roster: ', this.roster);
         // QUESTION: Will this ever even get hit since we should have every one that has logged in on device?
         // If it does, does that mean we're catching updates we shouldn't, eg ChronoDrive updates for users that
         // never logged in here
