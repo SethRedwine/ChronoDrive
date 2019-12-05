@@ -265,21 +265,21 @@ try {
         // TODO: initialize this before login to catch updates for all users, and not require login for sync
         chronoDrive = new ChronoDriveSync(msg.user, files, userDirChecksum.hash, HUB_PREFIX, face, keyChain, certificateName, users);
 
-        function testBroadcast() {
-          // do whatever you like here
-          console.log('testBroadcast...');
-          chronoDrive.sendFiles(files);
-          // face.expressInterest((new Name(
-          //   "/ndn/broadcast/ChronoDrive-0.1")).append('sredwine'),
-          //   (interest, data) => {
-          //     console.log('recieved update somehow');
-          //     console.log(interest.getName().toUri());
-          //     console.log(data);
-          //   },
-          //   () => { console.log('recieved update somehow') });
-          setTimeout(testBroadcast, 15000);
-        }
-        testBroadcast();
+        // function testBroadcast() {
+        //   // do whatever you like here
+        //   console.log('testBroadcast...');
+        //   chronoDrive.sendFiles(files);
+        //   // face.expressInterest((new Name(
+        //   //   "/ndn/broadcast/ChronoDrive-0.1")).append('sredwine'),
+        //   //   (interest, data) => {
+        //   //     console.log('recieved update somehow');
+        //   //     console.log(interest.getName().toUri());
+        //   //     console.log(data);
+        //   //   },
+        //   //   () => { console.log('recieved update somehow') });
+        //   setTimeout(testBroadcast, 15000);
+        // }
+        // testBroadcast();
       })
       .catch(error => {
         return console.error(error);
