@@ -2,22 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var ndn_js_1 = require("ndn-js");
 var main_1 = require("./main");
-// NOTE: this ts file won't work with protobufjs 5.0.3
-// import { FileMessage } from './filebuf';
 var ProtoBuf = require("protobufjs");
-// const fileMessageBuilder = ProtoBuf.loadProtoFile('./filebuf.proto');
 var fileProto = "\n\tsyntax = \"proto3\";\n\n\tpackage com.fileMessage;\n\n\tenum FileMessageType {\n\t\toption allow_alias = true;\n\t\tADD = 0;\n \t\tUPDATE = 1;\n  \t\tDELETE = 2;\n  \t\tOTHER = 3;\n\t}\n\n\tmessage FileMessage {\n\t\tstring user = 1;\n\t\tstring filename = 2;\n\t\tstring path = 3;\n \t\tFileMessageType type = 4;\n\t\tint32 timestamp = 5;\n \t\tstring data = 6;\n\t}\n";
 var fileMessageBuilder = ProtoBuf.protoFromString(fileProto);
-console.log('Protobuf: ', ProtoBuf);
-console.log('File Message Builder: ', fileMessageBuilder);
-// NOTE: Default ndn prefix
-// const HUB_PREFIX = "ndn/edu/ucla/remap";
+// console.log('Protobuf: ', ProtoBuf);
+// console.log('File Message Builder: ', fileMessageBuilder);
 var HUB_PREFIX = "ndn/edu/unomaha/adhoc/pi";
 exports.HUB_PREFIX = HUB_PREFIX;
 var ChronoDriveSync = function (userName, fileInfo, userDirChecksum, hubPrefix, face, keyChain, certificateName, roster) {
     this.userName = userName;
     this.userDirChecksum = userDirChecksum;
-    this.maxmsgcachelength = 100;
     this.isRecoverySyncState = true;
     this.sync_lifetime = 5000.0;
     this.face = face;
@@ -96,12 +90,6 @@ ChronoDriveSync.prototype.initial = function () {
     timeout.setInterestLifetimeMilliseconds(60000);
     console.log('Interest: /local/timeout');
     this.face.expressInterest(timeout, this.dummyOnData, this.heartbeat.bind(this));
-    // TODO: Implement the equivalent of below, if using the roster as a digest log
-    // if (this.roster.indexOf(this.usrname) == -1) {
-    //   this.roster.push(this.usrname);
-    //   //console.log("*** Local member " + this.usrname + " joins. ***");
-    //   this.messageCacheAppend('JOIN', 'xxx');
-    // }
 };
 /**
  * This onData is passed as onData for timeout interest in initial, which means it
@@ -219,11 +207,13 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
     }
 };
 /**
- * No chat data coming back.
+ * No file data coming back.
  * @param {Interest}
  */
-ChronoDriveSync.prototype.updateTimeout = function (interest) { };
-/**
+ChronoDriveSync.prototype.updateTimeout = function (interest) {
+    console.log("Timeout waiting for file data");
+};
+/**˝
  *
  * @param {Interest}
  */
@@ -235,8 +225,7 @@ ChronoDriveSync.prototype.heartbeat = function (interest) {
     // Making a timeout interest for heartbeat...
     var timeout = new ndn_js_1.Interest(new ndn_js_1.Name("/local/timeout"));
     timeout.setInterestLifetimeMilliseconds(60000);
-    console.log('Interest: /local/timeout');
-    //console.log("*** Chat heartbeat expressed interest with name: " + timeout.getName().toUri() + " ***");
+    console.log('Interest: ' + timeout.getName().toUri());
     this.face.expressInterest(timeout, this.dummyOnData, this.heartbeat.bind(this));
 };
 /**
@@ -274,27 +263,18 @@ ChronoDriveSync.prototype.alive = function (interest, temp_seq, name, session, p
 ChronoDriveSync.prototype.sendFiles = function (fileInfo) {
     if (fileInfo && fileInfo.path) {
         this.sync.publishNextSequenceNo();
+        console.log('Publishing next sequence number...');
+        console.log(this.sync.getSequenceNo());
         // TODO: Handle different file message types
         this.fileInfoUpdate("UPDATE", fileInfo);
     }
 };
 /**
- * Append a new CachedMessage to msgcache, using given messageType and message,
- * the sequence number from this.sync.getSequenceNo() and the current time.
- * Also remove elements from the front of the cache as needed to keep the size to
- * this.maxmsgcachelength.
+ * Update the file information sync has
  */
-// ChronoDriveSync.prototype.messageCacheAppend = function (messageType, message) {
 ChronoDriveSync.prototype.fileInfoUpdate = function (fileMessageType, fileInfo) {
     // TODO: retool to store file states with checksums
     // TODO: Handle different file message types
-    // chronochat code: adding to cache and removing old entries
-    // var d = new Date();
-    // var t = d.getTime();
-    // this.msgcache.push(new ChronoDriveSync.CachedMessage(this.sync.usrseq, messageType, message, t));
-    // while (this.msgcache.length > this.maxmsgcachelength) {
-    //   this.msgcache.shift();
-    // }
     // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests, are created?
     // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
     // If so, this method will need to search through and edit that structure

@@ -120,12 +120,7 @@ exports.DEFAULT_RSA_PRIVATE_KEY_DER = Buffer.from([
     0x84, 0x50, 0x1b, 0x3e, 0x47, 0x6d, 0x74, 0xfb, 0xd1, 0xa6, 0x10, 0x20, 0x6c, 0x6e, 0xbe, 0x44,
     0x3f, 0xb9, 0xfe, 0xbc, 0x8d, 0xda, 0xcb, 0xea, 0x8f
 ]);
-// Next few lines ripped from Chronochat-js - https://github.com/named-data/ChronoChat-js/blob/master/index.html
 // ChronoSync Stuff
-// Just use static host for now, allow user to specify in future
-// const host = '/raspberry/pi/test/network/';
-// const face = new Face({ host: host });
-// TODO: specify host later, just using localhost now
 var transport = new ndn_js_1.TcpTransport();
 console.log(transport, new ndn_js_1.TcpTransport.ConnectionInfo('127.0.0.1', 6363));
 var face = new ndn_js_1.Face(transport, new ndn_js_1.TcpTransport.ConnectionInfo('127.0.0.1', 6363));

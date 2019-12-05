@@ -14,13 +14,8 @@ let win, serve, chronoDrive;
 const args = process.argv.slice(1);
 serve = args.some(val => val === '--serve');
 const APP_DATA_DIR = app.getPath('userData');
+// TODO: move user dirs one level deeper
 let USER_DATA_DIR = APP_DATA_DIR;
-
-console.log('App data dir: ' + APP_DATA_DIR);
-// Ensure the app data folder exists
-if (!fs.existsSync(APP_DATA_DIR)) {
-  fs.mkdirSync(APP_DATA_DIR);
-}
 
 // Encryption Keys - probably a way better way to do this
 export const DEFAULT_RSA_PUBLIC_KEY_DER = Buffer.from([
@@ -174,7 +169,7 @@ function createWindow() {
   }
 
   // if (serve) {
-    win.webContents.openDevTools();
+  win.webContents.openDevTools();
   // }
 
   // Emitted when the window is closed.
@@ -190,6 +185,7 @@ function createWindow() {
 try {
 
   // Ensure that a directory for the users' data has been initialized
+  console.log('App data dir: ' + APP_DATA_DIR);
   if (!fs.existsSync(APP_DATA_DIR)) {
     fs.mkdirSync(APP_DATA_DIR);
   }
@@ -218,6 +214,7 @@ try {
 
   ipcMain.on('login', (evt, msg) => {
     // Ensure that the directory for this specific user has been initialized
+    // TODO: move user dirs one level deeper
     USER_DATA_DIR = `${APP_DATA_DIR}/${msg.user}`;
     console.log('Repo: ' + USER_DATA_DIR);
     if (!fs.existsSync(USER_DATA_DIR)) {
@@ -305,6 +302,7 @@ function getDirInfo(dirPath, dirEntry = null): FileInfo {
         path: entPath,
         stats: entStats,
         entries: null,
+        // TODO: Get rid of this data and then pull when sending update
         fileContents: data,
         checksum: checksum(data),
         lastUpdate: entStats.mtime.getTime()
@@ -350,6 +348,7 @@ function checksum(str: string, algorithm?: string, encoding?: string) {
 }
 
 function getUsers(): string[] {
+  // TODO: move user dirs one level deeper
   if (!fs.existsSync(APP_DATA_DIR)) {
     return [];
   }
