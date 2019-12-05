@@ -128,12 +128,6 @@ var certificateName = keyName.getSubName(0, keyName.size() - 1).append("KEY").ap
 identityStorage.addKey(keyName, ndn_js_1.KeyType.RSA, new ndn_js_1.Blob(exports.DEFAULT_RSA_PUBLIC_KEY_DER, false));
 privateKeyStorage.setKeyPairForKeyName(keyName, ndn_js_1.KeyType.RSA, exports.DEFAULT_RSA_PUBLIC_KEY_DER, exports.DEFAULT_RSA_PRIVATE_KEY_DER);
 face.setCommandSigningInfo(keyChain, certificateName);
-var users = getUsers();
-console.log('Users: ' + users);
-watch("" + APP_DATA_DIR, { recursive: false }, function (event, filename) {
-    users = getUsers();
-    console.log('Users: ' + users);
-});
 var fileWatcherDebounce = false;
 function createWindow() {
     var electronScreen = electron_1.screen;
@@ -178,6 +172,13 @@ try {
     if (!fs.existsSync(APP_DATA_DIR)) {
         fs.mkdirSync(APP_DATA_DIR);
     }
+    // Get list of users that have logged in on device
+    var users_1 = getUsers();
+    console.log('Users: ' + users_1);
+    watch("" + APP_DATA_DIR, { recursive: false }, function (event, filename) {
+        users_1 = getUsers();
+        console.log('Users: ' + users_1);
+    });
     // This method will be called when Electron has finished
     // initialization and is ready to create browser windows.
     // Some APIs can only be used after this event occurs.
@@ -242,10 +243,17 @@ try {
             console.log('Last File Update: ' + new Date(lastUpdated));
             console.log('User Dir Checksum: ' + userDirChecksum.hash);
             console.log('Hub Prefix: ' + ChronoDriveSync_1.HUB_PREFIX);
-            console.log('Other Users: ' + users);
+            console.log('Other Users: ' + users_1);
             files.checksum = userDirChecksum.hash;
             // TODO: initialize this before login to catch updates for all users, and not require login for sync
-            chronoDrive = new ChronoDriveSync_1.ChronoDriveSync(msg.user, files, userDirChecksum.hash, ChronoDriveSync_1.HUB_PREFIX, face, keyChain, certificateName, users);
+            chronoDrive = new ChronoDriveSync_1.ChronoDriveSync(msg.user, files, userDirChecksum.hash, ChronoDriveSync_1.HUB_PREFIX, face, keyChain, certificateName, users_1);
+            function broadcast() {
+                // do whatever you like here
+                console.log('publishNextSequenceNo test');
+                chronoDrive.sync.publishNextSequenceNo();
+                setTimeout(broadcast, 5000);
+            }
+            broadcast();
         })
             .catch(function (error) {
             return console.error(error);

@@ -190,7 +190,7 @@ try {
     users = getUsers();
     console.log('Users: ' + users);
   });
-  
+
   // This method will be called when Electron has finished
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
@@ -366,3 +366,11 @@ export function getLastUpdateMs(files: FileInfo): number {
   }
   return lastUpdate;
 }
+
+// function testBroadcast() {
+//   // do whatever you like here
+//   console.log('testBroadcast...');
+//   face.expressInterest(new Name(HUB_PREFIX).append('test'), () => {console.log('!!recieved testBroadcast response!!')}, () => {console.log('Never got a response :(')});
+//   setTimeout(testBroadcast, 5000);
+// }
+// testBroadcast();

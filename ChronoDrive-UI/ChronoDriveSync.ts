@@ -88,6 +88,7 @@ ChronoDriveSync.prototype.onInterest = function
   // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
   let content = null;
   // chat_prefix should really be saved as a name, not a URI string.
+  console.log('onInterest interest: ', interest);
   var chatPrefixSize = new Name(this.chat_prefix).size();
   const interestTimestamp = parseInt(interest.getName().get(chatPrefixSize + 1).toEscapedString());
   const lastLocalUpdate = getLastUpdateMs(this.fileInfo);
@@ -147,6 +148,7 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
   var sessionNoList = [];  // of number
   var sequenceNoList = []; // of number
 
+  console.log('sendInterest syncStates: ', syncStates);
   // NOTE: looks like chronochat was matching on sync states from other users
   // I *think* we'll want to match on state from the same user here, since 
   // others won't be updating their files
@@ -201,6 +203,8 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
   // TODO: here I think we need to store the user and the timestamp & checksum to the new 'roster'
   // and obviously update the files
   // TODO: Handle recovery state
+
+  console.log('onData interest: ', interest);
   var arr = new Uint8Array(co.getContent().size());
   arr.set(co.getContent().buf());
   var content = this.FileMessage.decode(arr.buffer);
@@ -257,6 +261,7 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
  * @param {Interest}
  */
 ChronoDriveSync.prototype.updateTimeout = function (interest) {
+  console.log('updateTimeout interest: ', interest);
   console.log("Timeout waiting for file data");
 };
 
@@ -265,6 +270,7 @@ ChronoDriveSync.prototype.updateTimeout = function (interest) {
  * @param {Interest}
  */
 ChronoDriveSync.prototype.heartbeat = function (interest) {
+  console.log('heartbeat interest: ', interest);
   // TODO: A better heartbeat, once we have a cache of actual updates instead
   // of just file state
   this.sync.publishNextSequenceNo();
@@ -291,6 +297,7 @@ ChronoDriveSync.prototype.heartbeat = function (interest) {
  * @param {string}
  */
 ChronoDriveSync.prototype.alive = function (interest, temp_seq, name, session, prefix) {
+  console.log('alive interest: ', interest);
   // NOTE: I'm not sure we need to do anything here on a timeout 
   // //console.log("check alive");
   // // NOTE: Session is a timestamp
