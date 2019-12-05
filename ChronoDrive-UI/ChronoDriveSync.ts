@@ -61,11 +61,6 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   this.fileInfo = fileInfo;
 
   //console.log("The local chat prefix " + this.sync_prefix.toUri() + " ***");
-
-  // NOTE: Session is a timestamp
-  // QUESTION: What is it good for if we have the last modified for each individual file
-  var session = (new Date()).getTime();
-
   this.FileMessage = fileMessageBuilder.build('com.fileMessage');
 
   // console.log(this.screen_name + ", welcome to chatroom " + this.chatroom + "!");
@@ -74,7 +69,7 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
     this.initial.bind(this),
     this.sync_prefix,
     (new Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName),
-    session,
+    fileInfo.lastUpdate,
     face,
     keyChain,
     certificateName,
