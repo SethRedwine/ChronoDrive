@@ -43,7 +43,8 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   this.certificateName = certificateName;
 
   // TODO: rename prefix - we're filing, not chatting
-  this.sync_prefix = (new Name(hubPrefix)).append(this.userName).append(this.getRandomString());
+  this.deviceId = this.getRandomString();
+  this.sync_prefix = (new Name(hubPrefix)).append(this.userName).append(this.deviceId);
   console.log('Prefix: ', this.sync_prefix.toUri());
 
   // QUESTION: Do we continue to use this roster? this will make it possible to keep stored users' directories updated without relying on 
@@ -102,7 +103,7 @@ ChronoDriveSync.prototype.onInterest = function
   console.log('syncPrefixSize: ', syncPrefixSize);
   const interestTimestamp = parseInt(interest.getName().get(syncPrefixSize).toEscapedString());
   const lastLocalUpdate = getLastUpdateMs(this.fileInfo);
-  if (lastLocalUpdate > interestTimestamp) {
+  if (lastLocalUpdate >= interestTimestamp) {
     content = {
       user: this.userName,
       filename: this.fileInfo.entry.name,
@@ -153,17 +154,14 @@ ChronoDriveSync.prototype.dummyOnData = function (interest, co) {
 ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
   // TODO: Cover the recovery state case
   this.isRecoverySyncState = isRecovery;
-
-  var sendList = [];       // of String
-  var sessionNoList = [];  // of number
-  var sequenceNoList = []; // of number
-
+  
   console.log('sendInterest syncStates: ', syncStates);
   // NOTE: looks like chronochat was matching on sync states from other users
   // I *think* we'll want to match on state from the same user here, since 
   // others won't be updating their files
   // QUESTION: If note is right, do we need to ensure the state wasn't created by
   // the current device or will that be fine?
+  let uri;
   for (var j = 0; j < syncStates.length; j++) {
     var syncState = syncStates[j];
     var nameComponents = new Name(syncState.getDataPrefix());
@@ -171,32 +169,12 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
     var sessionNo = syncState.getSessionNo();
 
     console.log('Received sync state: ' + syncState.getDataPrefix() + ', ' + tempName + ', ' + sessionNo + ', ' + syncState.getSequenceNo());
-    if (tempName == this.userName) {
-      var index = -1;
-      for (var k = 0; k < sendList.length; ++k) {
-        if (sendList[k] == syncState.getDataPrefix()) {
-          index = k;
-          break;
-        }
-      }
-      if (index != -1) {
-        sessionNoList[index] = sessionNo;
-        sequenceNoList[index] = syncState.getSequenceNo();
-      }
-      else {
-        sendList.push(syncState.getDataPrefix());
-        sessionNoList.push(sessionNo);
-        sequenceNoList.push(syncState.getSequenceNo());
-      }
+    if (tempName != this.deviceId && sessionNo > this.fileInfo.lastUpdate) {
+      uri = syncState.getDataPrefix() + "/" + sessionNo + "/" + syncState.getSequenceNo();
     }
   }
 
-  for (var i = 0; i < sendList.length; ++i) {
-    // NOTE: Here is where we build interest name for the update data
-    // I think instead of sessionNo we should be using the timestamp from this.fileInfo, since the sessionNo
-    // is locked in at the initialization of the sync object (I think)
-    // This is where we would add the file hash to the interest too
-    var uri = sendList[i] + "/" + sessionNoList[i] + "/" + sequenceNoList[i];
+  if (uri) {
     var interest = new Interest(new Name(uri));
     interest.setInterestLifetimeMilliseconds(this.sync_lifetime);
     console.log('Interest: ' + uri);
