@@ -102,14 +102,13 @@ ChronoDriveSync.prototype.onInterest = function
   var syncPrefixSize = new Name(this.sync_prefix).size();
   console.log('syncPrefixSize: ', syncPrefixSize);
   const interestTimestamp = parseInt(interest.getName().get(syncPrefixSize).toEscapedString());
-  const lastLocalUpdate = getLastUpdateMs(this.fileInfo);
-  if (lastLocalUpdate >= interestTimestamp) {
+  if (this.fileInfo.lastUpdate >= interestTimestamp) {
     content = {
       user: this.userName,
       filename: this.fileInfo.entry.name,
       path: this.fileInfo.path,
       type: 'UPDATE',
-      timestamp: lastLocalUpdate,
+      timestamp: this.fileInfo.lastUpdate,
       data: JSON.stringify(this.fileInfo)
     };
   }
@@ -147,7 +146,7 @@ ChronoDriveSync.prototype.dummyOnData = function (interest, co) {
 };
 
 /**
- * Send a Chat interest to fetch chat messages after the user gets the Sync data packet
+ * Send a file interest to fetch files after the user gets the Sync data packet
  * @param {SyncStates[]} syncStates The array of sync states
  * @param {bool} isRecovery if it's in recovery state
  */
@@ -172,9 +171,9 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
     console.log('Received sync state: ' + syncState.getDataPrefix() + ', ' + tempName + ', ' + sessionNo + ', ' + syncState.getSequenceNo());
     console.log('sync update: ', new Date(this.fileInfo.lastUpdate));
     console.log('last local update: ', new Date(this.fileInfo.lastUpdate));
-    if (sessionNo > biggestSession && sessionNo > this.fileInfo.lastUpdate) {
+    if (sessionNo > biggestSession) {
       biggestSession = sessionNo;
-      uri = syncState.getDataPrefix() + "/" + sessionNo + "/" + syncState.getSequenceNo();
+      uri = syncState.getDataPrefix() + "/" + this.fileInfo.lastUpdate + "/" + syncState.getSequenceNo();
     }
   }
 
@@ -314,7 +313,7 @@ ChronoDriveSync.prototype.sendFiles = function (fileInfo: FileInfo) {
   if (fileInfo && fileInfo.path) {
     // TODO: Handle different file message types
     this.fileInfoUpdate("UPDATE", fileInfo);
-    this.sync.session = fileInfo.lastUpdate;
+    // this.sync.session = fileInfo.lastUpdate;
     this.sync.publishNextSequenceNo();
     console.log('Publishing next sequence number: ' + this.sync.getSequenceNo());
   }

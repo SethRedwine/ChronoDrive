@@ -224,6 +224,7 @@ try {
     }
     files = getDirInfo(USER_DATA_DIR);
     const lastUpdated = getLastUpdateMs(files);
+    files.lastUpdate = lastUpdated
     evt.reply('directory-update', files);
 
     // Watch the data directory and push changes to the UI
