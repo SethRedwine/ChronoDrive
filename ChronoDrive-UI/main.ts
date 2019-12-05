@@ -367,10 +367,10 @@ export function getLastUpdateMs(files: FileInfo): number {
   return lastUpdate;
 }
 
-// function testBroadcast() {
-//   // do whatever you like here
-//   console.log('testBroadcast...');
-//   face.expressInterest(new Name(HUB_PREFIX).append('test'), () => {console.log('!!recieved testBroadcast response!!')}, () => {console.log('Never got a response :(')});
-//   setTimeout(testBroadcast, 5000);
-// }
-// testBroadcast();
+function testBroadcast() {
+  // do whatever you like here
+  console.log('testBroadcast...');
+  face.expressInterest(new  (new Name(HUB_PREFIX)).append(this.userName), () => {console.log('!!recieved testBroadcast response!!')}, () => {console.log('Never got a response :(')});
+  setTimeout(testBroadcast, 5000);
+}
+testBroadcast();
