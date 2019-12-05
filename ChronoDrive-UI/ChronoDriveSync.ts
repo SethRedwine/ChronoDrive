@@ -162,6 +162,7 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
   // QUESTION: If note is right, do we need to ensure the state wasn't created by
   // the current device or will that be fine?
   let uri;
+  let biggestSession = 0;
   for (var j = 0; j < syncStates.length; j++) {
     var syncState = syncStates[j];
     var nameComponents = new Name(syncState.getDataPrefix());
@@ -169,7 +170,10 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
     var sessionNo = syncState.getSessionNo();
 
     console.log('Received sync state: ' + syncState.getDataPrefix() + ', ' + tempName + ', ' + sessionNo + ', ' + syncState.getSequenceNo());
-    if (sessionNo > this.fileInfo.lastUpdate) {
+    console.log('sync update: ', new Date(this.fileInfo.lastUpdate));
+    console.log('last local update: ', new Date(this.fileInfo.lastUpdate));
+    if (sessionNo > biggestSession && sessionNo > this.fileInfo.lastUpdate) {
+      biggestSession = sessionNo;
       uri = syncState.getDataPrefix() + "/" + sessionNo + "/" + syncState.getSequenceNo();
     }
   }
