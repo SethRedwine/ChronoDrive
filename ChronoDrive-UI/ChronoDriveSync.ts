@@ -154,7 +154,7 @@ ChronoDriveSync.prototype.dummyOnData = function (interest, co) {
 ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
   // TODO: Cover the recovery state case
   this.isRecoverySyncState = isRecovery;
-  
+
   console.log('sendInterest syncStates: ', syncStates);
   // NOTE: looks like chronochat was matching on sync states from other users
   // I *think* we'll want to match on state from the same user here, since 
@@ -169,15 +169,15 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
     var sessionNo = syncState.getSessionNo();
 
     console.log('Received sync state: ' + syncState.getDataPrefix() + ', ' + tempName + ', ' + sessionNo + ', ' + syncState.getSequenceNo());
-    if (tempName != this.deviceId && sessionNo > this.fileInfo.lastUpdate) {
+    if (sessionNo > this.fileInfo.lastUpdate) {
       uri = syncState.getDataPrefix() + "/" + sessionNo + "/" + syncState.getSequenceNo();
     }
   }
 
+  console.log('sendInterest Interest: ' + uri);
   if (uri) {
     var interest = new Interest(new Name(uri));
     interest.setInterestLifetimeMilliseconds(this.sync_lifetime);
-    console.log('Interest: ' + uri);
     this.face.expressInterest(interest, this.onData.bind(this), this.updateTimeout.bind(this));
   }
 };
