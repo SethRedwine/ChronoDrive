@@ -15,7 +15,6 @@ let files: FileInfo;
 const args = process.argv.slice(1);
 serve = args.some(val => val === '--serve');
 const APP_DATA_DIR = path.join(app.getPath('userData'), 'sync');
-// TODO: move user dirs one level deeper
 let USER_DATA_DIR = APP_DATA_DIR;
 
 // Encryption Keys - probably a way better way to do this
@@ -133,6 +132,8 @@ face.setCommandSigningInfo(keyChain, certificateName);
 
 let fileWatcherDebounce = false;
 
+// face.registerPrefix(new Name('/ndn'), (prefix, interest, face, interestFilterId, filter) => { console.log('received interest with prefix' + prefix +': ', interest.getName().toUri()) });
+
 function createWindow() {
 
   const electronScreen = screen;
@@ -216,7 +217,6 @@ try {
 
   ipcMain.on('login', (evt, msg) => {
     // Ensure that the directory for this specific user has been initialized
-    // TODO: move user dirs one level deeper
     USER_DATA_DIR = `${APP_DATA_DIR}/${msg.user}`;
     console.log('Repo: ' + USER_DATA_DIR);
     if (!fs.existsSync(USER_DATA_DIR)) {
@@ -366,7 +366,6 @@ function checksum(str: string, algorithm?: string, encoding?: string) {
 }
 
 function getUsers(): string[] {
-  // TODO: move user dirs one level deeper
   if (!fs.existsSync(APP_DATA_DIR)) {
     return [];
   }

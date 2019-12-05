@@ -335,10 +335,11 @@ ChronoDriveSync.prototype.alive = function (interest, temp_seq, name, session, p
  */
 ChronoDriveSync.prototype.sendFiles = function (fileInfo: FileInfo) {
   if (fileInfo && fileInfo.path) {
-    this.sync.publishNextSequenceNo();
-    console.log('Publishing next sequence number: ' + this.sync.getSequenceNo());
     // TODO: Handle different file message types
     this.fileInfoUpdate("UPDATE", fileInfo);
+    this.sync.session = fileInfo.lastUpdate;
+    this.sync.publishNextSequenceNo();
+    console.log('Publishing next sequence number: ' + this.sync.getSequenceNo());
   }
 }
 
