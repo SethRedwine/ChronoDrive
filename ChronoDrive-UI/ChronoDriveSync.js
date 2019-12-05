@@ -59,10 +59,11 @@ ChronoDriveSync.prototype.onInterest = function (prefix, interest, face, interes
     var content = null;
     // sync_prefix should really be saved as a name, not a URI string.
     console.log('onInterest interest: ', interest);
-    console.log('interest size: ', interest.getName().size());
-    var chatPrefixSize = new ndn_js_1.Name(this.sync_prefix).size();
     console.log('interest name: ', interest.getName().toUri());
-    var interestTimestamp = parseInt(interest.getName().get(chatPrefixSize).toEscapedString());
+    console.log('interest size: ', interest.getName().size());
+    var syncPrefixSize = new ndn_js_1.Name(this.sync_prefix).size();
+    console.log('syncPrefixSize: ', syncPrefixSize);
+    var interestTimestamp = parseInt(interest.getName().get(syncPrefixSize).toEscapedString());
     var lastLocalUpdate = main_1.getLastUpdateMs(this.fileInfo);
     if (lastLocalUpdate > interestTimestamp) {
         content = {

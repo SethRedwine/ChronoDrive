@@ -268,7 +268,7 @@ try {
         function testBroadcast() {
           // do whatever you like here
           console.log('testBroadcast...');
-          chronoDrive.sendFiles()
+          chronoDrive.sendFiles(files);
           setTimeout(testBroadcast, 5000);
         }
         testBroadcast();

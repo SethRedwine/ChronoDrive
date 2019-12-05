@@ -12,6 +12,7 @@ var watch = require('node-watch');
 var crypto = require('crypto');
 var hashElement = require('folder-hash').hashElement;
 var win, serve, chronoDrive;
+var files;
 var args = process.argv.slice(1);
 serve = args.some(function (val) { return val === '--serve'; });
 var APP_DATA_DIR = path.join(electron_1.app.getPath('userData'), 'sync');
@@ -206,7 +207,7 @@ try {
         if (!fs.existsSync(USER_DATA_DIR)) {
             fs.mkdirSync(USER_DATA_DIR);
         }
-        var files = getDirInfo(USER_DATA_DIR);
+        files = getDirInfo(USER_DATA_DIR);
         var lastUpdated = getLastUpdateMs(files);
         evt.reply('directory-update', files);
         // Watch the data directory and push changes to the UI
@@ -247,6 +248,13 @@ try {
             files.checksum = userDirChecksum.hash;
             // TODO: initialize this before login to catch updates for all users, and not require login for sync
             chronoDrive = new ChronoDriveSync_1.ChronoDriveSync(msg.user, files, userDirChecksum.hash, ChronoDriveSync_1.HUB_PREFIX, face, keyChain, certificateName, users_1);
+            // function testBroadcast() {
+            //   // do whatever you like here
+            //   console.log('testBroadcast...');
+            //   chronoDrive.sendFiles()
+            //   setTimeout(testBroadcast, 5000);
+            // }
+            // testBroadcast();
         })
             .catch(function (error) {
             return console.error(error);
@@ -356,7 +364,7 @@ exports.getLastUpdateMs = getLastUpdateMs;
 // function testBroadcast() {
 //   // do whatever you like here
 //   console.log('testBroadcast...');
-//   face.expressInterest((new Name(HUB_PREFIX)).append('sredwine'), () => {console.log('!!recieved testBroadcast response!!')}, () => {console.log('Never got a response :(')});
+//   chronoDrive.sendFiles()
 //   setTimeout(testBroadcast, 5000);
 // }
 // testBroadcast();
