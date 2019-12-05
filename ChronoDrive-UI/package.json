@@ -104,6 +104,7 @@
     "ndn-js": "^0.19.0",
     "node-watch": "^0.6.3",
     "protobufjs": "^5.0.3",
+    "rsa-keypair": "^2.0.2",
     "rxjs": "6.5.3",
     "uuid": "3.2.1"
   }

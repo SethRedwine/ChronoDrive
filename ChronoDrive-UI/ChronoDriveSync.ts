@@ -1,6 +1,6 @@
 import { Name, ChronoSync2013, Interest, Data } from 'ndn-js';
 import { FileInfo } from './src/app/types/DirectoryInfo';
-import { getLastUpdateMs, writeFromFileInfo } from './main';
+import { writeFromFileInfo } from './main';
 const ProtoBuf = require("protobufjs");
 
 const fileProto = `
@@ -63,6 +63,7 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
 
   //console.log("The local chat prefix " + this.sync_prefix.toUri() + " ***");
   this.FileMessage = fileMessageBuilder.build('com.fileMessage');
+  console.log('FileMessage', this.FileMessage)
 
   // console.log(this.screen_name + ", welcome to chatroom " + this.chatroom + "!");
   this.sync = new ChronoSync2013(
@@ -94,7 +95,6 @@ ChronoDriveSync.prototype.onInterest = function
   // TODO: Actually, here we should iterate through the fileInfo/grab the right file, then check the checksum and the timestamp and update if it's older
   // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests are created?
   // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
-  let content = null;
   // sync_prefix should really be saved as a name, not a URI string.
   console.log('onInterest interest: ', interest);
   console.log('interest name: ', interest.getName().toUri());
@@ -102,31 +102,38 @@ ChronoDriveSync.prototype.onInterest = function
   var syncPrefixSize = new Name(this.sync_prefix).size();
   console.log('syncPrefixSize: ', syncPrefixSize);
   const interestTimestamp = parseInt(interest.getName().get(syncPrefixSize).toEscapedString());
-  if (this.fileInfo.lastUpdate >= interestTimestamp) {
-    content = {
-      user: this.userName,
-      filename: this.fileInfo.entry.name,
-      path: this.fileInfo.path,
-      type: 'UPDATE',
-      timestamp: this.fileInfo.lastUpdate,
-      data: JSON.stringify(this.fileInfo)
-    };
-  }
+  console.log('interestTimestamp: ', interestTimestamp);
+  const filesToSend = getContentsForFileUpdates(this.fileInfo, interestTimestamp)
 
-  if (content) {
-    var str = new Uint8Array(this.FileMessage.encode(content));
-    console.log('Data: ' + interest.getName);
-    var co = new Data(interest.getName());
-    co.setContent(str);
-    this.keyChain.sign(co);
-    try {
-      face.putData(co);
-    }
-    catch (e) {
-      console.log(e.toString());
+  if (filesToSend.length > 0) {
+    for (const fileInfo of filesToSend) {
+      var str = new Uint8Array((new this.FileMessage.FileMessage(fileInfo)).toArrayBuffer());
+      var co = new Data(interest.getName());
+      co.setContent(str);
+      this.keyChain.sign(co);
+      try {
+        face.putData(co);
+      }
+      catch (e) {
+        console.log(e.toString());
+      }
     }
   }
 };
+
+function getContentsForFileUpdates(dir: FileInfo, interestTimestamp: number): FileInfo[] {
+  const filesToSend: FileInfo[] = [];
+  for (const entry of dir.entries) {
+    if (!entry.isDirectory) {
+      if (entry.lastUpdate >= interestTimestamp) {
+        filesToSend.push(entry);
+      }
+    } else {
+      filesToSend.concat(getContentsForFileUpdates(entry, interestTimestamp));
+    }
+  }
+  return filesToSend;
+}
 
 ChronoDriveSync.prototype.onRegisterFailed = function (prefix) { };
 
