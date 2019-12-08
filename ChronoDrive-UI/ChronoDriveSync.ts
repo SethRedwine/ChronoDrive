@@ -103,8 +103,9 @@ ChronoDriveSync.prototype.onInterest = function
   console.log('syncPrefixSize: ', syncPrefixSize);
   const interestTimestamp = parseInt(interest.getName().get(syncPrefixSize).toEscapedString());
   console.log('interestTimestamp: ', interestTimestamp);
-  const filesToSend = getContentsForFileUpdates(this.fileInfo, interestTimestamp)
+  const filesToSend = this.getContentsForFileUpdates(this.fileInfo, interestTimestamp)
 
+  console.log('Found ' + filesToSend.length + ' files to update');
   if (filesToSend.length > 0) {
     for (const fileInfo of filesToSend) {
       var str = new Uint8Array((new this.FileMessage.FileMessage(fileInfo)).toArrayBuffer());
@@ -113,6 +114,7 @@ ChronoDriveSync.prototype.onInterest = function
       this.keyChain.sign(co);
       try {
         face.putData(co);
+        console.log('Sent response for ' + fileInfo.path + '...');
       }
       catch (e) {
         console.log(e.toString());
@@ -121,18 +123,24 @@ ChronoDriveSync.prototype.onInterest = function
   }
 };
 
-function getContentsForFileUpdates(dir: FileInfo, interestTimestamp: number): FileInfo[] {
-  const filesToSend: FileInfo[] = [];
+ChronoDriveSync.prototype.getContentsForFileUpdates = function (dir: FileInfo, interestTimestamp: number): any[] {
+  const fileMessagesToSend = [];
   for (const entry of dir.entries) {
     if (!entry.isDirectory) {
       if (entry.lastUpdate >= interestTimestamp) {
-        filesToSend.push(entry);
+        fileMessagesToSend.push({
+          user: this.userName,
+          filename: '',
+          path: entry.path,
+          type: 'UPDATE',
+          timestamp: this.fileInfo.lastUpdate,
+          data: JSON.stringify(entry)});
       }
     } else {
-      filesToSend.concat(getContentsForFileUpdates(entry, interestTimestamp));
+      fileMessagesToSend.concat(this.getContentsForFileUpdates(entry, interestTimestamp));
     }
   }
-  return filesToSend;
+  return fileMessagesToSend;
 }
 
 ChronoDriveSync.prototype.onRegisterFailed = function (prefix) { };
