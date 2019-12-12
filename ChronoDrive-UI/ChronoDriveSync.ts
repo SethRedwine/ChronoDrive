@@ -110,14 +110,15 @@ ChronoDriveSync.prototype.onInterest = function
       var str = new Uint8Array((new this.FileMessage.FileMessage(fileInfo)).toArrayBuffer());
       var co = new Data(interest.getName());
       co.setContent(str);
-      this.keyChain.sign(co);
-      try {
-        face.putData(co);
-        console.log('Sent response for ' + fileInfo.path + '...');
-      }
-      catch (e) {
-        console.log(e.toString());
-      }
+      this.keyChain.sign(co, this.certificateName, function () {
+        try {
+          face.putData(co);
+          console.log('Sent response for ' + fileInfo.path + '...');
+        }
+        catch (e) {
+          console.log(e.toString());
+        }
+      });
     }
   }
 };
@@ -133,7 +134,8 @@ ChronoDriveSync.prototype.getContentsForFileUpdates = function (dir: FileInfo, i
           path: entry.path,
           type: 'UPDATE',
           timestamp: this.fileInfo.lastUpdate,
-          data: JSON.stringify(entry)});
+          data: JSON.stringify(entry)
+        });
       }
     } else {
       fileMessagesToSend.concat(this.getContentsForFileUpdates(entry, interestTimestamp));
@@ -266,7 +268,7 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
  * @param {Interest}
  */
 ChronoDriveSync.prototype.updateTimeout = function (interest) {
-  console.log('updateTimeout interest: ', interest);
+  console.log('updateTimeout interest: ', interest.getName().toUri());
   console.log("Timeout waiting for file data");
 };
 
@@ -283,7 +285,7 @@ ChronoDriveSync.prototype.heartbeat = function (interest) {
 
   // Making a timeout interest for heartbeat...
   var timeout = new Interest(new Name("/local/timeout"));
-  timeout.setInterestLifetimeMilliseconds(60000);
+  timeout.setInterestLifetimeMilliseconds(300000);
 
   console.log('Interest: ' + timeout.getName().toUri());
   this.face.expressInterest(timeout, this.dummyOnData, this.heartbeat.bind(this));
