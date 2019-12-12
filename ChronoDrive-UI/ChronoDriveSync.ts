@@ -42,7 +42,6 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
   this.keyChain = keyChain;
   this.certificateName = certificateName;
 
-  // TODO: rename prefix - we're filing, not chatting
   this.deviceId = this.getRandomString();
   this.sync_prefix = (new Name(hubPrefix)).append(this.userName).append(this.deviceId);
   console.log('Prefix: ', this.sync_prefix.toUri());

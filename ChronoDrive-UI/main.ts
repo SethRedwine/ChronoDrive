@@ -259,6 +259,7 @@ try {
         console.log('Initializing ChronoDriveSync...');
         console.log('User: ' + msg.user);
         console.log('Last File Update: ' + new Date(lastUpdated));
+        console.log((new Date(lastUpdated).getTime()));
         console.log('User Dir Checksum: ' + userDirChecksum.hash);
         console.log('Hub Prefix: ' + HUB_PREFIX);
         console.log('Other Users: ' + users);
