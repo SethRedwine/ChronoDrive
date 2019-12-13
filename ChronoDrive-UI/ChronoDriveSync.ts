@@ -170,7 +170,7 @@ ChronoDriveSync.prototype.getFileManifestMessage = function (dir: FileInfo): Fil
         checksum: entry.checksum
       });
     } else {
-      manifest.concat(this.getFileManifest(entry));
+      manifest.concat(this.getFileManifestMessage(entry));
     }
   }
   return {
