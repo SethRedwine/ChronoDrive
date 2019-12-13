@@ -12,8 +12,8 @@ const fileProto = `
 		option allow_alias = true;
 		ADD = 0;
  		UPDATE = 1;
-  		DELETE = 2;
-  		OTHER = 3;
+  	DELETE = 2;
+  	OTHER = 3;
 	}
 
 	message FileMessage {
@@ -25,6 +25,28 @@ const fileProto = `
  		string data = 6;
 	}
 `;
+
+enum FileMessageType {
+  ADD,
+  UPDATE,
+  DELETE,
+  OTHER,
+}
+
+class FileMessage {
+  user: string;
+  filename: string;
+  path: string;
+  type: FileMessageType;
+  timestamp: number;
+  data: string;
+}
+
+class ManifestEntry {
+  path: string;
+  lastUpdated: number;
+  checksum: string;
+}
 
 const fileMessageBuilder = ProtoBuf.protoFromString(fileProto);
 
@@ -66,7 +88,7 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
 
   // console.log(this.screen_name + ", welcome to chatroom " + this.chatroom + "!");
   this.sync = new ChronoSync2013(
-    this.sendInterest.bind(this),
+    this.sendManifestInterest.bind(this),
     this.initial.bind(this),
     this.sync_prefix,
     (new Name("/ndn/broadcast/ChronoDrive-0.1")).append(this.userName),
@@ -78,15 +100,10 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
     this.onRegisterFailed.bind(this)
   );
   face.registerPrefix(this.sync_prefix, this.onInterest.bind(this), this.onRegisterFailed.bind(this));
-  face.registerPrefix((new Name(hubPrefix)).append(this.userName).append('update'), testOnInterest)
 };
 
-function testOnInterest(prefix, interest, face, interestFilterId, filter) {
-  console.log('interest name: ', interest.getName().toUri());
-}
-
 /**
- * Send the data packet which contains the user's message
+ * Send a data packet which contains the file manifest or file update
  * @param {Name} Interest name prefix
  * @param {Interest} The interest
  * @param {Face} The face
@@ -95,58 +112,95 @@ function testOnInterest(prefix, interest, face, interestFilterId, filter) {
  */
 ChronoDriveSync.prototype.onInterest = function
   (prefix, interest, face, interestFilterId, filter) {
-  // TODO: Figure out how to add checksum to incoming interest
-  // TODO: Actually, here we should iterate through the fileInfo/grab the right file, then check the checksum and the timestamp and update if it's older
-  // QUESTION: How do we ensure that files that aren't created on one system, and therefore wouldn't have interests are created?
-  // Maybe we'll need a hierarchical structure instead of a map - again, maybe it WILL need to be the root FileElement
-  // sync_prefix should really be saved as a name, not a URI string.
   console.log('onInterest interest: ', interest);
-  console.log('interest name: ', interest.getName().toUri());
+  const interestName = interest.getName().toUri()
+  console.log('interest name: ', interestName);
   console.log('interest size: ', interest.getName().size());
-  var syncPrefixSize = new Name(this.sync_prefix).size();
+  var syncPrefixSize = this.sync_prefix.size();
   console.log('syncPrefixSize: ', syncPrefixSize);
-  const interestTimestamp = parseInt(interest.getName().get(syncPrefixSize).toEscapedString());
-  console.log('interestTimestamp: ', interestTimestamp);
-  const filesToSend = this.getContentsForFileUpdates(this.fileInfo, interestTimestamp)
 
-  console.log('Found ' + filesToSend.length + ' files to update');
-  if (filesToSend.length > 0) {
-    for (const fileInfo of filesToSend) {
-      var str = new Uint8Array((new this.FileMessage.FileMessage(fileInfo)).toArrayBuffer());
+  // TODO: if there's ever a filepath containing manifest, this is gonna be borked
+  if (interestName.indexOf('manifest') > -1) {
+    console.log(`Preparing manifest for  ${this.userName}...`);
+    const fileManifest = this.getFileManifestMessage(this.fileInfo);
+    var str = new Uint8Array((new this.FileMessage.FileMessage(fileManifest)).toArrayBuffer());
+    var co = new Data(interest.getName());
+    co.setContent(str);
+    this.keyChain.sign(co, this.certificateName, function () {
+      try {
+        face.putData(co);
+        console.log('Sent manifest: ', JSON.parse(fileManifest.data));
+      }
+      catch (e) {
+        console.log(e.toString());
+      }
+    });
+  } else {
+    const interestFilepath = parseInt(interest.getName().getSubName(syncPrefixSize).toEscapedString());
+    console.log('interestFilepath: ', interestFilepath);
+    const fileToSend = this.getContentsForFileUpdateMessage(this.fileInfo, interestFilepath);
+
+    if (fileToSend) {
+      console.log('Found ' + interestFilepath + ' for update');
+      var str = new Uint8Array((new this.FileMessage.FileMessage(fileToSend)).toArrayBuffer());
       var co = new Data(interest.getName());
       co.setContent(str);
       this.keyChain.sign(co, this.certificateName, function () {
         try {
           face.putData(co);
-          console.log('Sent response for ' + fileInfo.path + '...');
+          console.log('Sent response for ' + fileToSend.path + '...');
         }
         catch (e) {
           console.log(e.toString());
         }
       });
+    } else {
+      console.error('Error: Did not find requested file ' + interestFilepath)
     }
   }
 };
 
-ChronoDriveSync.prototype.getContentsForFileUpdates = function (dir: FileInfo, interestTimestamp: number): any[] {
-  const fileMessagesToSend = [];
+ChronoDriveSync.prototype.getFileManifestMessage = function (dir: FileInfo): FileMessage {
+  const manifest: ManifestEntry[] = [];
   for (const entry of dir.entries) {
     if (!entry.isDirectory) {
-      if (entry.lastUpdate >= interestTimestamp) {
-        fileMessagesToSend.push({
+      manifest.push({
+        path: entry.path,
+        lastUpdated: entry.lastUpdate,
+        checksum: entry.checksum
+      });
+    } else {
+      manifest.concat(this.getFileManifest(entry));
+    }
+  }
+  return {
+    user: this.userName,
+    filename: '',
+    path: '',
+    type: FileMessageType.OTHER,
+    timestamp: this.fileInfo.lastUpdate,
+    data: JSON.stringify(manifest)
+  };
+}
+
+ChronoDriveSync.prototype.getContentsForFileUpdateMessage = function (dir: FileInfo, interestFilepath: string): FileMessage {
+  for (const entry of dir.entries) {
+    if (!entry.isDirectory) {
+      if (entry.path === interestFilepath) {
+        return {
           user: this.userName,
           filename: '',
           path: entry.path,
-          type: 'UPDATE',
+          type: FileMessageType.UPDATE,
           timestamp: this.fileInfo.lastUpdate,
           data: JSON.stringify(entry)
-        });
+        };
       }
     } else {
-      fileMessagesToSend.concat(this.getContentsForFileUpdates(entry, interestTimestamp));
+      return this.getContentsForFileUpdatesMessage(entry, interestFilepath);
     }
   }
-  return fileMessagesToSend;
+  return null;
 }
 
 ChronoDriveSync.prototype.onRegisterFailed = function (prefix) { };
@@ -171,12 +225,12 @@ ChronoDriveSync.prototype.dummyOnData = function (interest, co) {
  * @param {SyncStates[]} syncStates The array of sync states
  * @param {bool} isRecovery if it's in recovery state
  */
-ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
+ChronoDriveSync.prototype.sendManifestInterest = function (syncStates, isRecovery) {
   // TODO: Cover the recovery state case
   this.isRecoverySyncState = isRecovery;
 
-  console.log('sendInterest syncStates: ', syncStates);
-  
+  console.log('sendManifestInterest syncStates: ', syncStates);
+
   // TODO: This whole thing needs to be rethought, we'll need to send an interest for each file
   // if we get a timestamp that is newer than the latest update we could send an interest for each file,
   // return a no-update message type if the file is up to date (based on hash of contents), return file update otherwise
@@ -195,29 +249,54 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
     console.log('last local update: ', new Date(this.fileInfo.lastUpdate));
     if (sessionNo > biggestSession) {
       biggestSession = sessionNo;
-      uri = syncState.getDataPrefix() + "/" + this.fileInfo.lastUpdate + "/" + syncState.getSequenceNo();
+      uri = syncState.getDataPrefix() + "/manifest"; // + this.fileInfo.lastUpdate + "/" + syncState.getSequenceNo();
     }
   }
 
-  console.log('sendInterest Interest: ' + uri);
+  console.log('sendManifestInterest Interest: ' + uri);
   if (uri) {
     var interest = new Interest(new Name(uri));
     interest.setInterestLifetimeMilliseconds(this.sync_lifetime);
-    this.face.expressInterest(interest, this.onData.bind(this), this.updateTimeout.bind(this));
+    this.face.expressInterest(interest, this.onManifestData.bind(this), this.updateTimeout.bind(this));
   }
 };
 
 /**
- * Process the incoming data
+ * Process the incoming file manifest data
  * @param {Interest} interest
  * @param {Data} co
  */
-ChronoDriveSync.prototype.onData = function (interest, co) {
+ChronoDriveSync.prototype.onManifestData = function (interest, co) { 
+  console.log('onManifestData interest: ', interest.getName().toEscapedString());
+  const arr = new Uint8Array(co.getContent().size());
+  arr.set(co.getContent().buf());
+  const content = this.FileMessage.decode(arr.buffer);
+  console.log('Data packet: ', content);
+  const interestSize = interest.getName().size();
+
+  const manifest: ManifestEntry[] = JSON.parse(content.data);
+
+  for(const entry of manifest) {
+    const fileInterestPrefix = interest.getName().getSubName(0, interestSize - 1);
+    const fileInterest = new Interest(fileInterestPrefix.append(entry.path));
+    console.log('sending file interest: ', fileInterest.getName().toEscapedString());
+    fileInterest.setInterestLifetimeMilliseconds(this.sync_lifetime);
+    // TODO: bind a onFileManifest method here instead of onData, onData will get called from that method for each file requiring and update
+    this.face.expressInterest(fileInterest, this.onFileData.bind(this), this.updateTimeout.bind(this));
+  }
+}
+
+/**
+ * Process the incoming file data
+ * @param {Interest} interest
+ * @param {Data} co
+ */
+ChronoDriveSync.prototype.onFileData = function (interest, co) {
   // TODO: here I think we need to store the user and the timestamp & checksum to the new 'roster'
   // and obviously update the files
   // TODO: Handle recovery state
 
-  console.log('onData interest: ', interest);
+  console.log('onFileData interest: ', interest.getName().toEscapedString());
   var arr = new Uint8Array(co.getContent().size());
   arr.set(co.getContent().buf());
   var content = this.FileMessage.decode(arr.buffer);
@@ -232,33 +311,33 @@ ChronoDriveSync.prototype.onData = function (interest, co) {
 
     // NOTE: here it's grabbing the last two components of the data Name - need to store timestamp and checksum here probably
     // NOTE: Session is a timestamp
-    var session = parseInt((co.getName().get(-2)).toEscapedString());
-    var seqno = parseInt((co.getName().get(-1)).toEscapedString());
-    var l = 0;
+    // var session = parseInt((co.getName().get(-2)).toEscapedString());
+    // var seqno = parseInt((co.getName().get(-1)).toEscapedString());
+    // var l = 0;
 
     // update roster
-    while (l < this.roster.length) {
-      var name_t = this.roster[l].substring(0, this.roster[l].length - name.length);
-      var session_t = this.roster[l].substring(this.roster[l].length - name.length, this.roster[l].length);
-      if (name === name_t && session > session_t) {
-        this.roster[l] = name + session;
-        break;
-      } else {
-        l++;
-      }
-    }
-    console.log('onData - Updated roster: ', this.roster);
+    // while (l < this.roster.length) {
+    //   var name_t = this.roster[l].substring(0, this.roster[l].length - name.length);
+    //   var session_t = this.roster[l].substring(this.roster[l].length - name.length, this.roster[l].length);
+    //   if (name === name_t && session > session_t) {
+    //     this.roster[l] = name + session;
+    //     break;
+    //   } else {
+    //     l++;
+    //   }
+    // }
+    // console.log('onFileData - Updated roster: ', this.roster);
 
     // QUESTION: Will this ever even get hit since we should have every one that has logged in on device?
     // If it does, does that mean we're catching updates we shouldn't, eg ChronoDrive updates for users that
     // never logged in here
-    if (l == this.roster.length) {
-      this.roster.push(name + session);
-    }
+    // if (l == this.roster.length) {
+    //   this.roster.push(name + session);
+    // }
     var timeout = new Interest(new Name("/local/timeout"));
     timeout.setInterestLifetimeMilliseconds(120000);
     console.log('Interest: /local/timeout');
-    this.face.expressInterest(timeout, this.dummyOnData, this.alive.bind(this, timeout, seqno, name, session, prefix));
+    this.face.expressInterest(timeout, this.dummyOnData, this.alive.bind(this)); //, timeout, seqno, name, session, prefix));
 
     if (content.user === this.userName) {
       writeFromFileInfo(JSON.parse(content.data));
