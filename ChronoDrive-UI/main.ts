@@ -132,7 +132,11 @@ face.setCommandSigningInfo(keyChain, certificateName);
 
 let fileWatcherDebounce = false;
 
-// face.registerPrefix(new Name('/ndn'), (prefix, interest, face, interestFilterId, filter) => { console.log('received interest with prefix' + prefix +': ', interest.getName().toUri()) });
+// Ensure that a directory for the users' data has been initialized
+console.log('App data dir: ' + APP_DATA_DIR);
+if (!fs.existsSync(APP_DATA_DIR)) {
+  fs.mkdirSync(APP_DATA_DIR);
+}
 
 function createWindow() {
 
@@ -178,13 +182,6 @@ function createWindow() {
 }
 
 try {
-
-  // Ensure that a directory for the users' data has been initialized
-  console.log('App data dir: ' + APP_DATA_DIR);
-  if (!fs.existsSync(APP_DATA_DIR)) {
-    fs.mkdirSync(APP_DATA_DIR);
-  }
-
   // Get list of users that have logged in on device
   let users = getUsers();
   console.log('Users: ' + users);
