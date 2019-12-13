@@ -78,7 +78,12 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
     this.onRegisterFailed.bind(this)
   );
   face.registerPrefix(this.sync_prefix, this.onInterest.bind(this), this.onRegisterFailed.bind(this));
+  face.registerPrefix((new Name(hubPrefix)).append(this.userName).append('update'), testOnInterest)
 };
+
+function testOnInterest(prefix, interest, face, interestFilterId, filter) {
+  console.log('interest name: ', interest.getName().toUri());
+}
 
 /**
  * Send the data packet which contains the user's message
@@ -176,6 +181,10 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
   // others won't be updating their files
   // QUESTION: If note is right, do we need to ensure the state wasn't created by
   // the current device or will that be fine?
+  
+  // TODO: This whole thing needs to be rethought, we'll need to send an interest for each file
+  // if we get a timestamp that is newer than the latest update we could send an interest for each file,
+  // return a no-update message type if the file is up to date (based on hash of contents), return file update otherwise
   let uri;
   let biggestSession = 0;
   for (var j = 0; j < syncStates.length; j++) {
