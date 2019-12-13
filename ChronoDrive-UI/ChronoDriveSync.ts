@@ -1,4 +1,4 @@
-import { Name, ChronoSync2013, Interest, Data, Blob } from 'ndn-js';
+import { Name, ChronoSync2013, Interest, Data, Blob, WireFormat } from 'ndn-js';
 import { FileInfo } from './src/app/types/DirectoryInfo';
 import { writeFromFileInfo } from './main';
 const ProtoBuf = require("protobufjs");
@@ -100,6 +100,9 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
     this.onRegisterFailed.bind(this)
   );
   face.registerPrefix(this.sync_prefix, this.onInterest.bind(this), this.onRegisterFailed.bind(this));
+  face.registerPrefix(new Name(hubPrefix), (prefix, interest, face, interestFilterId, filter) => {
+    console.log('received interest: ', interest.getName().toUri());
+  }, () => { })
 };
 
 /**
@@ -126,6 +129,9 @@ ChronoDriveSync.prototype.onInterest = function (prefix, interest, face, interes
     co.setContent(new Blob(str, false));
     this.keyChain.sign(co, this.certificateName, function () {
       try {
+        const wireFormat = WireFormat.getDefaultWireFormat();
+        var encoding = co.wireEncode(wireFormat);
+        console.log(encoding)
         face.putData(co);
         console.log('Sent manifest: ', JSON.parse(fileManifest.data));
       }
