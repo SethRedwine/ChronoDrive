@@ -1,4 +1,4 @@
-import { Name, ChronoSync2013, Interest, Data } from 'ndn-js';
+import { Name, ChronoSync2013, Interest, Data, Blob } from 'ndn-js';
 import { FileInfo } from './src/app/types/DirectoryInfo';
 import { writeFromFileInfo } from './main';
 const ProtoBuf = require("protobufjs");
@@ -110,9 +110,7 @@ const ChronoDriveSync = function (userName: string, fileInfo: FileInfo, userDirC
  * @param {number} interestFilterId
  * @param {InterestFilter} filter
  */
-ChronoDriveSync.prototype.onInterest = function
-  (prefix, interest, face, interestFilterId, filter) {
-  console.log('onInterest interest: ', interest);
+ChronoDriveSync.prototype.onInterest = function (prefix, interest, face, interestFilterId, filter) {
   const interestName = interest.getName().toUri()
   console.log('interest name: ', interestName);
   console.log('interest size: ', interest.getName().size());
@@ -125,7 +123,7 @@ ChronoDriveSync.prototype.onInterest = function
     const fileManifest = this.getFileManifestMessage(this.fileInfo);
     var str = new Uint8Array((new this.FileMessage.FileMessage(fileManifest)).toArrayBuffer());
     var co = new Data(interest.getName());
-    co.setContent(str);
+    co.setContent(new Blob(str, false));
     this.keyChain.sign(co, this.certificateName, function () {
       try {
         face.putData(co);
@@ -144,7 +142,7 @@ ChronoDriveSync.prototype.onInterest = function
       console.log('Found ' + interestFilepath + ' for update');
       var str = new Uint8Array((new this.FileMessage.FileMessage(fileToSend)).toArrayBuffer());
       var co = new Data(interest.getName());
-      co.setContent(str);
+      co.setContent(new Blob(str, false));
       this.keyChain.sign(co, this.certificateName, function () {
         try {
           face.putData(co);
@@ -266,7 +264,7 @@ ChronoDriveSync.prototype.sendManifestInterest = function (syncStates, isRecover
  * @param {Interest} interest
  * @param {Data} co
  */
-ChronoDriveSync.prototype.onManifestData = function (interest, co) { 
+ChronoDriveSync.prototype.onManifestData = function (interest, co) {
   console.log('onManifestData interest: ', interest.getName().toEscapedString());
   const arr = new Uint8Array(co.getContent().size());
   arr.set(co.getContent().buf());
@@ -276,7 +274,7 @@ ChronoDriveSync.prototype.onManifestData = function (interest, co) {
 
   const manifest: ManifestEntry[] = JSON.parse(content.data);
 
-  for(const entry of manifest) {
+  for (const entry of manifest) {
     const fileInterestPrefix = interest.getName().getSubName(0, interestSize - 1);
     const fileInterest = new Interest(fileInterestPrefix.append(entry.path));
     console.log('sending file interest: ', fileInterest.getName().toEscapedString());
