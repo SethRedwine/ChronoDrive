@@ -176,15 +176,12 @@ ChronoDriveSync.prototype.sendInterest = function (syncStates, isRecovery) {
   this.isRecoverySyncState = isRecovery;
 
   console.log('sendInterest syncStates: ', syncStates);
-  // NOTE: looks like chronochat was matching on sync states from other users
-  // I *think* we'll want to match on state from the same user here, since 
-  // others won't be updating their files
-  // QUESTION: If note is right, do we need to ensure the state wasn't created by
-  // the current device or will that be fine?
   
   // TODO: This whole thing needs to be rethought, we'll need to send an interest for each file
   // if we get a timestamp that is newer than the latest update we could send an interest for each file,
   // return a no-update message type if the file is up to date (based on hash of contents), return file update otherwise
+  // It may be useful to sync a manifest from which to sync these files, this would solve the problem of knowing which files need to be requested
+  // request the manifest from the most up-to-date node, then send out requests based on that manifest
   let uri;
   let biggestSession = 0;
   for (var j = 0; j < syncStates.length; j++) {
