@@ -1,0 +1,109 @@
+  181  mkdir 8210
+   11  ifconfig /all
+   12  ifconfig
+   33  dmesg
+  100  git init
+  129  git status
+  134  vi .gitignore
+  182  cd 8210
+  185  apt-cache search nfd
+  188  apt-cache search software-properties-common
+  190  sudo apt-get install nfd
+  192  sudo apt-get install software-properties-common
+  193  sudo add-apt-repository ppa:named-data/ppa
+  194  git clone https://github.com/named-data/ndn-cxx
+  196  git clone --recursive https://github.com/named-data/NFD
+  198  cd ndn-cxx
+  207  sudo apt-get install build-essential pkg-config libboost-all-dev
+  209  sudo apt-get install libsqlite3-dev libssl-dev libpcap-dev
+  382  free -m
+  379  sudo vi /etc/dphys-swapfile
+  380  sudo /etc/init.d/dphys-swapfile stop
+  383  sudo /etc/init.d/dphys-swapfile start
+  211  ./waf configure
+  212  sudo apt-get install doxygen graphviz python-sphinx
+  342  vmstat -t 5 &
+  213  ./waf
+  285  sudo ./waf install
+  360  cd NFD
+  362  ./waf
+  363  ./waf install
+  370  sudo ./waf install
+  371  which nfd
+  377  sudo cp /usr/local/etc/ndn/nfd.conf.sample /usr/local/etc/ndn/nfd.conf
+
+
+  238  ifconfig --all
+  241  iwconfig --help
+  242  man iwconfig
+  243  top
+  260  sudo cat /dev/mem
+  289  which ndnsec
+  290  ndnsec --help
+  401  tar cvf ndn.tar /usr/local/lib/*ndn* /usr/local/lib/pkg*/*ndn* /usr/local/bin/*ndn* /usr/local/bin/*nfd* /usr/local/etc/ndn /usr/local/include /usr/local/share/ndn* /usr/local/share/man/*/*ndn* /usr/local/share/man/*/*nfd*
+  405  scp ndn.tar pi@192.168.86.47:~/ndn.tar
+  406  ifconfig
+  407  sudo apt-get install hostapd
+  408  sudo apt install dnsmasq hostapd
+  413  cat /etc/network/interfaces
+  415  netconfig
+  420  cat /etc/init.d/networking
+  443  sudo cp -p dhcpcd.conf dhcpcd.conf.old
+  444  vi dhcpcd.conf
+  447  ifconfig
+  451  iw dev wlan0
+  452  iw wlan0 info
+  456  ifconfig wlan1 down
+  457  ifconfig wlan1 up
+  458  ifconfig wlan1 192.168.85.101 up
+  459  sudo ifconfig wlan1 192.168.85.101 up
+  460  ifconfig
+  465  sudo cp -p interfaces interfaces.old
+  466  sudo vi interfaces
+  467  sudo ifdown wlan1
+  469  sudo ifdown wlan0
+  470  sudo ifup wlan0
+  471  ifconfig
+  473  sudo ifdown wlan1
+  474  ifconfig
+  475  sudo ifconfig wlan1 down
+  476  ifconfig
+  481  ifconfig
+  482  ls -ltr
+  487  vi dhcpcd.conf
+  490  sudo vi wpa_supplicant/wpa_supplicant.conf 
+  492  sudo ifup wlan1
+  493  sudo ifdown wlan1
+  496  ls network/*.conf
+  497  ls network/interfaces
+  498  sudo vi network/interfaces
+  499  sudo ifup wlan1
+  505  sudo reboot
+  514  dmesg
+  525  cd ../wpa_supplicant/
+  527  vi wpa*.conf
+  532  sudo vi dhcpcd.conf
+  536  sudo dhcpcd wlan0
+  537  sudo -k dhcpcd wlan0
+  538  ps -fea | grep dhcpcd
+  543  sudo mv interfaces interfaces-new
+  544  sudo cp -p interfaces.old interfaces
+  547  sudo reboot
+  585  sudo vi dhcpcd.conf
+  588  sudo ifconfig wlan0 down
+  589  sudo iwconfig wlan0 essid RPiAdHoc
+  590  sudo ifconfig wlan0 ip 192.168.85.101
+  591  sudo ifconfig wlan0 192.168.85.101
+  592  sudo ifconfig wlan0 up
+  593  ifconfig
+  599  iwlist scan
+  605  lsb_release -a
+  607  sudo nfd-start
+  610  nfdc status show
+  611  nfdc face list
+  613  nfdc route list
+  614  nfdc face create udp://192.168.86.47
+  616  nfdc face list
+  620  nfdc route add /ndn/edu/unomaha/adhoc/pi udp://192.168.86.47
+  621  nfdc route list
+  622  sudo raspi-config
